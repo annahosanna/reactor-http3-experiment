@@ -38,6 +38,9 @@ public final class ReactorHttp3Experiment {
         routes.route(r -> true, ReactorHttp3Experiment::okResponseV11)
       );
 
+    serverV11 = serverV11.protocol(HttpProtocol.HTTP11);
+    DisposableServer disposableServerV11 = serverV11.bindNow();
+
     HttpServer serverV2 = HttpServer.create()
       .port(PORT)
       .wiretap(WIRETAP)
@@ -55,6 +58,7 @@ public final class ReactorHttp3Experiment {
       )
     );
     serverV2 = serverV2.protocol(HttpProtocol.H2);
+    DisposableServer disposableServerV2 = serverV2.bindNow();
 
     HttpServer serverV3 = HttpServer.create()
       .port(PORT)
@@ -85,25 +89,62 @@ public final class ReactorHttp3Experiment {
           .maxStreamDataBidirectionalRemote(1000000)
           .maxStreamsBidirectional(100)
       );
+    DisposableServer disposableServerV3 = serverV3.bindNow();
 
-    serverV11.bindNow().onDispose().block();
-    serverV2.bindNow().onDispose().block();
-    serverV3.bindNow().onDispose().block();
+    Mono.when(
+      disposableServerV11.onDispose(),
+      disposableServerV2.onDispose(),
+      disposableServerV3.onDispose()
+    ).block();
+    disposableServerV11.onDispose().block();
+    disposableServerV2.onDispose().block();
+    disposableServerV3.onDispose().block();
   }
 
   private static NettyOutbound okResponseV11(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    String responseText = new String(
-      "<html><a href=\"/fortune\">fortune</a></html>"
+    String imageText = new String(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
-    response.status(426);
-    response.header("Content-Type", "text/html");
-    response.header("Content-Length", Integer.toString(responseText.length()));
-    response.header("Upgrade-Insecure-Requests", "1");
+    String responseText = new String(
+      "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
+    );
     Mono<String> responseContent;
-    responseContent = Mono.just(responseText);
+    System.out.println(request.hostName().toString());
+    /*
+     // For some reason this is redirecting even when the server is localhost
+    if (request.hostName().toString() != "localhost") {
+      response.status(301);
+      response.header("location", "localhost");
+    } else {
+      response.status(426);
+    }
+    */
+    response.status(426);
+    
+    System.out.println(request.path().toString());
+    if (request.path().toString() == "/favicon.ico") {
+      response.header("content-type", "image/svg+xml");
+      response.header("content-length", Integer.toString(imageText.length()));
+      responseContent = Mono.just(imageText);
+    } else {
+      response.header("Content-Type", "text/html");
+      response.header(
+        "content-Length",
+        Integer.toString(responseText.length())
+      );
+      responseContent = Mono.just(responseText);
+    }
+    // response.header("ipgrade-insecure-requests", "1");
+    response.header("upgrade", "HTTP/3.0");
+    response.header("connection", "Upgrade");
+
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+    );
     return response.sendString(responseContent);
   }
 
@@ -111,19 +152,41 @@ public final class ReactorHttp3Experiment {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    String imageText = new String(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
+    );
     String responseText = new String(
-      "<html><a href=\"/fortune\">fortune</a></html>"
+      "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
     );
-    response.status(200);
-    response.header("Content-Type", "text/html");
-    response.header("Content-Length", Integer.toString(responseText.length()));
-    response.header(
-      "Alt-Svc",
-      "h3=\":443\"; ma=86400, h3-29=\":443\"; ma=86400, h3-Q050=\":443\"; ma=86400, h3-Q046=\":443\"; ma=86400, h3-Q043=\":443\"; ma=86400, quic=\":443\"; ma=86400; v=\"43,46\""
-    );
-    response.header("Application-Protocol", "h3,quic,h2,http/1.1");
     Mono<String> responseContent;
-    responseContent = Mono.just(responseText);
+    System.out.println(request.path().toString());
+    /*
+    if (request.hostName().toString() != "localhost") {
+      response.status(301);
+      response.header("location", "localhost");
+    } else {
+      response.status(200);
+    }
+    */
+    if (request.path().toString() == "/favicon.ico") {
+      response.header("content-type", "image/svg+xml");
+      response.header("content-length", Integer.toString(imageText.length()));
+      responseContent = Mono.just(imageText);
+    } else {
+      response.header("content-type", "text/html");
+      response.header(
+        "content-length",
+        Integer.toString(responseText.length())
+      );
+      responseContent = Mono.just(responseText);
+    }
+
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+    );
+    // response.header("Application-Protocol", "h3,quic,h2,http/1.1");
+
     return response.sendString(responseContent);
   }
 
@@ -131,14 +194,40 @@ public final class ReactorHttp3Experiment {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    String responseText = new String(
-      "<html><a href=\"/fortune\">fortune</a></html>"
+    String imageText = new String(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
-    response.status(200);
-    response.header("Content-Type", "text/html");
-    response.header("Content-Length", Integer.toString(responseText.length()));
-    response.header("Alt-Svc", "h3=\":443\"; ma=86400");
+    String responseText = new String(
+      "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
+    );
     Mono<String> responseContent;
+    /*
+    if (request.hostName().toString() != "localhost") {
+      response.status(301);
+      response.header("location", "localhost");
+    } else {
+      response.status(200);
+    }
+    */
+    System.out.println(request.path().toString());
+    if (request.path().toString() == "/favicon.ico") {
+      response.header("content-type", "image/svg+xml");
+      response.header("content-Length", Integer.toString(imageText.length()));
+      responseContent = Mono.just(imageText);
+    } else {
+      response.header("content-type", "text/html");
+      response.header(
+        "content-length",
+        Integer.toString(responseText.length())
+      );
+      responseContent = Mono.just(responseText);
+    }
+
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+    );
+
     responseContent = Mono.just(responseText);
     return response.sendString(responseContent);
   }
