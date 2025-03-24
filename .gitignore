@@ -1,3 +1,13 @@
+key.pem
+certs.pem
+.DS_Store
+.project
+/.gradle/
+/build/
+/.settings/
+/bin/
+/build/
+
 # Compiled class file
 *.class
 

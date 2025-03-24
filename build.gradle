@@ -1,0 +1,70 @@
+apply plugin: 'java'
+apply plugin: "eclipse"
+
+repositories {
+  mavenCentral()
+
+}
+
+sourceSets {
+  main
+}
+
+  // Bouncy castle in here can't include in fat jar since signed
+  // implementation "org.bouncycastle:bcutil-jdk18on:1.80"
+  // implementation "org.bouncycastle:bctls-jdk18on:1.80"
+  // implementation "org.bouncycastle:bcprov-jdk18on:1.80"
+  // implementation "io.netty.incubator:netty-incubator-codec-quic:0.0.20.Final"
+  //  implementation "io.vertx:vertx-web-common:5.0.0.CR5"
+  //  implementation "io.vertx:vertx-web-client:5.0.0.CR5"
+  //  implementation "io.vertx:vertx-web-api-service:5.0.0.CR5"
+  // implementation "io.netty:netty-common:4.1.118.Final"
+  // implementation "io.netty:netty-buffer:4.1.118.Final"
+  // implementation "io.netty:netty-codec:4.1.118.Final"
+  // implementation "io.netty:netty-codec-http:4.1.118.Final"
+  // implementation "io.netty:netty-transport:4.1.118.Final"
+  // implementation "io.netty.incubator:netty-incubator-codec-classes-quic:0.0.69.Final"
+  // implementation "io.netty.incubator:netty-incubator-codec-native-quic:0.0.69.Final"
+  // implementation "org.jetbrains:annotations:24.1.0"
+  // implementation "io.netty:netty-handler:4.1.118.Final"
+  // implementation group: 'io.projectreactor', name: 'reactor-core', version: '3.7.3'
+  // implementation group: 'io.projectreactor.netty', name: 'reactor-netty', version: '1.2.3'
+  // implementation group: 'io.projectreactor.netty', name: 'reactor-netty-http', version: '1.2.3'
+  // implementation "io.reactivex.rxjava2:rxjava:2.2.21"
+  // implementation "com.h2database:h2:2.3.232"
+  // implementation "com.fasterxml.jackson.core:jackson-databind:2.18.3"
+  // implementation "com.fasterxml.jackson.core:jackson-core:2.18.3"
+  // implementation "com.fasterxml.jackson.core:jackson-annotations:2.18.3"
+  // implementation group: 'io.projectreactor', name: 'reactor-bom', version: '2024.0.3'
+  // implementation group: 'io.projectreactor.addons', name: 'reactor-pool', version: '1.1.2'
+  // implementation group: 'io.projectreactor', name: 'reactor-tools', version: '3.7.3'
+
+dependencies {
+  implementation "org.bouncycastle:bcpkix-jdk18on:1.80"
+  implementation "io.netty.incubator:netty-incubator-codec-http3:0.0.28.Final"
+  implementation "io.netty:netty-all:4.1.118.Final"
+  // implementation "io.vertx:vertx-core:5.0.0.CR5"
+  // implementation "io.vertx:vertx-web:5.0.0.CR5"
+  implementation group: 'io.projectreactor.netty.incubator', name: 'reactor-netty-incubator-quic', version: '0.2.3'
+  implementation group: 'io.projectreactor.netty', name: 'reactor-netty-core', version: '1.2.3'
+  // implementation "com.oracle.ojdbc:osdt_cert:19.3.0.0"
+  // implementation group: 'com.oracle.ojdbc', name: 'osdt_core', version: '19.3.0.0'
+  // implementation group: 'com.oracle.ojdbc', name: 'oraclepki', version: '19.3.0.0'
+}
+
+configurations {
+  compile
+}
+
+jar {
+    manifest {
+        attributes (
+          'Main-Class' : 'example.MainServer'
+        )
+    }
+    archiveFileName = "http3-test.jar"
+    duplicatesStrategy = "exclude"
+    from(configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }) {
+      exclude("META-INF/*.RSA", "META-INF/*.SF", "META-INF/*.DSA")
+    }
+}
