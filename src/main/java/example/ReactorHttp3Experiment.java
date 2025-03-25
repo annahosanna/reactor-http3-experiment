@@ -25,7 +25,7 @@ import reactor.netty.http.server.HttpServerResponse;
 public final class ReactorHttp3Experiment {
 
   static final boolean SECURE = true;
-  static final int PORT = 8443;
+  static final int PORT = 443;
   static final boolean WIRETAP = true;
   static final boolean COMPRESS = true;
 
@@ -33,7 +33,7 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(WIRETAP)
-      .compress(false)
+      .compress(true)
       .route(routes ->
         routes.route(r -> true, ReactorHttp3Experiment::okResponseV11)
       );
@@ -52,8 +52,8 @@ public final class ReactorHttp3Experiment {
     serverV2 = serverV2.secure(spec ->
       spec.sslContext(
         Http2SslContextSpec.forServer(
-          new File("certs.pem"),
-          new File("key.pem")
+        		new File("certs.pem"), new File("key.pem")
+          
         )
       )
     );
@@ -112,20 +112,20 @@ public final class ReactorHttp3Experiment {
       "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
     );
     Mono<String> responseContent;
-    System.out.println(request.hostName().toString());
-    /*
-     // For some reason this is redirecting even when the server is localhost
-    if (request.hostName().toString() != "localhost") {
-      response.status(301);
-      response.header("location", "localhost");
-    } else {
-      response.status(426);
-    }
-    */
-    response.status(426);
+    System.out.println(request.hostName().toString()+" HTTP 1.1");
     
-    System.out.println(request.path().toString());
-    if (request.path().toString() == "/favicon.ico") {
+     // For some reason this is redirecting even when the server is localhost
+    // if (request.hostName().toString() != "localhost") {
+      response.status(301);
+      response.header("location", "https://localhost/fortune");
+    // } else {
+      // response.status(426);
+    // }
+    
+    // response.status(426);
+    
+    System.out.println(request.path().toString()+" HTTP 1.1");
+    if (request.path().toString().strip().toLowerCase().equals("favicon.ico".strip().toLowerCase()) == true) {
       response.header("content-type", "image/svg+xml");
       response.header("content-length", Integer.toString(imageText.length()));
       responseContent = Mono.just(imageText);
@@ -159,7 +159,7 @@ public final class ReactorHttp3Experiment {
       "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
     );
     Mono<String> responseContent;
-    System.out.println(request.path().toString());
+    System.out.println(request.path().toString()+ " HTTP/2");
     /*
     if (request.hostName().toString() != "localhost") {
       response.status(301);
@@ -168,7 +168,7 @@ public final class ReactorHttp3Experiment {
       response.status(200);
     }
     */
-    if (request.path().toString() == "/favicon.ico") {
+    if (request.path().toString().strip().toLowerCase().equals("favicon.ico".strip().toLowerCase()) == true) {
       response.header("content-type", "image/svg+xml");
       response.header("content-length", Integer.toString(imageText.length()));
       responseContent = Mono.just(imageText);
@@ -209,8 +209,8 @@ public final class ReactorHttp3Experiment {
       response.status(200);
     }
     */
-    System.out.println(request.path().toString());
-    if (request.path().toString() == "/favicon.ico") {
+    System.out.println(request.path().toString()+ " HTTP/3");
+    if (request.path().toString().strip().toLowerCase().equals("favicon.ico".strip().toLowerCase()) == true) {
       response.header("content-type", "image/svg+xml");
       response.header("content-Length", Integer.toString(imageText.length()));
       responseContent = Mono.just(imageText);
