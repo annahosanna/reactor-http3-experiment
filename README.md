@@ -1,9 +1,11 @@
 # reactor-http3-experiment
 
 Using Project Reactor for a simple HTTP/3 server (until Netty has http/3 ~ 4.2 and Vert.x ~ 5)
-This in a copy of the notes from vertx-http3-experiment
 
-## A few notes about Alt-Svc Header
+## Status
+* HTTP/3 upgrade is not working - current theory is untrusted self signed cert.
+* Rapid requests cause an exception
+* Still do not know which token handler is in use
 
 ## Basics of HTTP/3
 
