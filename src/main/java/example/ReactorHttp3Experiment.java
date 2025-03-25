@@ -112,19 +112,11 @@ public final class ReactorHttp3Experiment {
       "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
     );
     Mono<String> responseContent;
-    System.out.println(request.hostName().toString() + " HTTP 1.1");
+    System.out.println(request.hostName().toString() + " " + request.path().toString() +" HTTP 1.1");
 
-    // For some reason this is redirecting even when the server is localhost
-    // if (request.hostName().toString() != "localhost") {
     response.status(301);
     response.header("location", "https://localhost/fortune");
-    // } else {
-    // response.status(426);
-    // }
 
-    // response.status(426);
-
-    System.out.println(request.path().toString() + " HTTP 1.1");
     if (
       request
         .path()
@@ -138,9 +130,9 @@ public final class ReactorHttp3Experiment {
       response.header("content-length", Integer.toString(imageText.length()));
       responseContent = Mono.just(imageText);
     } else {
-      response.header("Content-Type", "text/html");
+      response.header("content-type", "text/html");
       response.header(
-        "content-Length",
+        "content-length",
         Integer.toString(responseText.length())
       );
       responseContent = Mono.just(responseText);
@@ -168,14 +160,6 @@ public final class ReactorHttp3Experiment {
     );
     Mono<String> responseContent;
     System.out.println(request.path().toString() + " HTTP/2");
-    /*
-    if (request.hostName().toString() != "localhost") {
-      response.status(301);
-      response.header("location", "localhost");
-    } else {
-      response.status(200);
-    }
-    */
     if (
       request
         .path()
@@ -201,7 +185,6 @@ public final class ReactorHttp3Experiment {
       "alt-svc",
       "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
     );
-    // response.header("Application-Protocol", "h3,quic,h2,http/1.1");
 
     return response.sendString(responseContent);
   }
@@ -217,14 +200,6 @@ public final class ReactorHttp3Experiment {
       "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
     );
     Mono<String> responseContent;
-    /*
-    if (request.hostName().toString() != "localhost") {
-      response.status(301);
-      response.header("location", "localhost");
-    } else {
-      response.status(200);
-    }
-    */
     System.out.println(request.path().toString() + " HTTP/3");
     if (
       request
@@ -236,7 +211,7 @@ public final class ReactorHttp3Experiment {
       true
     ) {
       response.header("content-type", "image/svg+xml");
-      response.header("content-Length", Integer.toString(imageText.length()));
+      response.header("content-length", Integer.toString(imageText.length()));
       responseContent = Mono.just(imageText);
     } else {
       response.header("content-type", "text/html");
@@ -252,7 +227,6 @@ public final class ReactorHttp3Experiment {
       "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
     );
 
-    responseContent = Mono.just(responseText);
     return response.sendString(responseContent);
   }
 }
