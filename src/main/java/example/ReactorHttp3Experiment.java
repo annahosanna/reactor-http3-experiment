@@ -1,18 +1,10 @@
 package example;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.File;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.NettyOutbound;
-import reactor.netty.http.*;
-import reactor.netty.http.Http11SslContextSpec;
 import reactor.netty.http.Http2SslContextSpec;
 import reactor.netty.http.Http3SslContextSpec;
 import reactor.netty.http.HttpProtocol;
@@ -20,13 +12,11 @@ import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
-// This is basically straight from the Reactor examples
-// https://github.com/reactor/reactor-netty/tree/main/reactor-netty-examples/src/main/java/reactor/netty/examples/http
 public final class ReactorHttp3Experiment {
 
   static final boolean SECURE = true;
   static final int PORT = 443;
-  static final boolean WIRETAP = true;
+  static final boolean WIRETAP = false; // Network traffic does not need to be logged
   static final boolean COMPRESS = true;
 
   public static void main(String[] args) throws Exception {
@@ -49,9 +39,12 @@ public final class ReactorHttp3Experiment {
         routes.route(r -> true, ReactorHttp3Experiment::okResponseV2)
       );
 
+    // Deprecated: SslProvider.SslContextSpec.sslContext(SslProvider.ProtocolSslContextSpec)
+    // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html 
+    // Use: reactor.netty.http.Http2SslContextSpec
     serverV2 = serverV2.secure(spec ->
       spec.sslContext(
-        Http2SslContextSpec.forServer(
+    		  Http2SslContextSpec.forServer(
           new File("certs.pem"),
           new File("key.pem")
         )
@@ -96,9 +89,6 @@ public final class ReactorHttp3Experiment {
       disposableServerV2.onDispose(),
       disposableServerV3.onDispose()
     ).block();
-    disposableServerV11.onDispose().block();
-    disposableServerV2.onDispose().block();
-    disposableServerV3.onDispose().block();
   }
 
   private static NettyOutbound okResponseV11(
