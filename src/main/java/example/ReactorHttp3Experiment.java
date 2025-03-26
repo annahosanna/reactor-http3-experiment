@@ -99,7 +99,7 @@ public final class ReactorHttp3Experiment {
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
     String responseText = new String(
-      "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
+      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
     );
     Mono<String> responseContent;
     System.out.println(request.hostName().toString() + " " + request.path().toString() +" HTTP 1.1");
@@ -150,7 +150,7 @@ public final class ReactorHttp3Experiment {
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
     String responseText = new String(
-      "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
+      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
     );
     Mono<String> responseContent;
     System.out.println(request.path().toString() + " HTTP/2");
@@ -190,7 +190,7 @@ public final class ReactorHttp3Experiment {
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
     String responseText = new String(
-      "<!doctype html><html><a href=\"/fortune\">fortune</a></html>"
+      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
     );
     Mono<String> responseContent;
     System.out.println(request.path().toString() + " HTTP/3");
