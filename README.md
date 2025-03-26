@@ -3,15 +3,23 @@
 ## Summary
 
 - This uses a combination of the examples referenced below, so I do not want to take credit for the similarities between this and those examples. Differences: There was not a single example which included the combined functionality to start three non blocking servers each serving a diffirent http protocol, routes which were seperate from the http server, and return various content. This readme is original work.
-- This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3.
+- This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
 
 ## Status
 
-- HTTP/3 upgrade is not working - current theory is untrusted self signed cert.
-- Rapid requests cause an ssl exception - not sure why
-- Still do not know which QUIC token handler is in use (for secure tokens).
-- I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg.
+1. HTTP/3 is working!! Firefox has settings to enable http3 with self signed certs. Chrome keeps causing errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
+
+- For macos - certs must have an extened key usage of serverAuth
+- For Chrome: Do not use "localhost" or "127.0.0.1" in your URL, but the actual hostname (Your software should not bind to localhost only either)
+- For Chrome: Do not send `Connection: close` from the server, or you will trigger a new TLS negotiation for each request (Although this header only applies to http/1.1; however for http/1.1 use `Connection: keep-alive`)
+
+2. Server error `javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown` when ByteToMessageDecoder tries to decode the ssl stream. (Caused by Chrome)
+
+- Chrome causes the error when requesting a page but not following a link on the site; however, the correct content is still returned. Thus I think Chrome is trying to negotiate HTTP/3 on the first visit to a site - but if it fails then it doesn't try again.
+
+3. Still do not know which QUIC token handler is in use (for secure tokens).
+4. I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg.
 
 ## Basics of HTTP/3
 
@@ -64,12 +72,14 @@
 Web browsers have different ways of enabling http3
 Test your browser at `https://quic.nginx.org/quic.html` which has provides js to make 3000 requests to unique URLs. (text/plain no data)
 
-1. Firefox - Enabled by default
-2. Chrome (Desktop not mobile) - Use `chrome://flags` and enable QUIC; Starts using QUIC after 1000 connections ()
-3. Edge?
-4. Safari - Not currently
-5. Opera - ?
-6. Curl - ?
+See: `https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Alt-Svc`
+
+- Safari seems to be waiting for libcurl
+- Chrome://flags and enable QUIC
+- Chrome://certificate-manager to manage custom certificates
+- Enable Chrome WebTransport Developer mode
+- Firefox about:config network.http.http3.enabled and set to true
+- Also if you are using self signed certs, there are additional http3 firefox options which need to be enabled
 
 ## Examples
 

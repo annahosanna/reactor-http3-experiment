@@ -22,7 +22,7 @@ public final class ReactorHttp3Experiment {
   public static void main(String[] args) throws Exception {
     HttpServer serverV11 = HttpServer.create()
       .port(80)
-      .wiretap(WIRETAP)
+      .wiretap(false)
       .compress(true)
       .route(routes ->
         routes.route(r -> true, ReactorHttp3Experiment::okResponseV11)
@@ -33,7 +33,7 @@ public final class ReactorHttp3Experiment {
 
     HttpServer serverV2 = HttpServer.create()
       .port(PORT)
-      .wiretap(WIRETAP)
+      .wiretap(true)
       .compress(COMPRESS)
       .route(routes ->
         routes.route(r -> true, ReactorHttp3Experiment::okResponseV2)
@@ -55,7 +55,7 @@ public final class ReactorHttp3Experiment {
 
     HttpServer serverV3 = HttpServer.create()
       .port(PORT)
-      .wiretap(WIRETAP)
+      .wiretap(false)
       .compress(COMPRESS)
       .route(routes ->
         routes.route(r -> true, ReactorHttp3Experiment::okResponseV3)
@@ -105,7 +105,11 @@ public final class ReactorHttp3Experiment {
     System.out.println(request.hostName().toString() + " " + request.path().toString() +" HTTP 1.1");
 
     response.status(301);
-    response.header("location", "https://localhost/fortune");
+    try {
+    	response.header("location","https://" + java.net.InetAddress.getLocalHost().getHostName()+ "/fortune");
+    } catch (Exception e) {
+    	response.header("location","https://localhost/fortune");
+    }
 
     if (
       request
@@ -128,12 +132,12 @@ public final class ReactorHttp3Experiment {
       responseContent = Mono.just(responseText);
     }
     // response.header("ipgrade-insecure-requests", "1");
-    response.header("upgrade", "HTTP/3.0");
+    response.header("upgrade", "h3, h2");
     response.header("connection", "Upgrade");
 
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1"
     );
     return response.sendString(responseContent);
   }
@@ -173,8 +177,7 @@ public final class ReactorHttp3Experiment {
 
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
-    );
+      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1");
 
     return response.sendString(responseContent);
   }
@@ -214,7 +217,7 @@ public final class ReactorHttp3Experiment {
 
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\" ma=1"
     );
 
     return response.sendString(responseContent);
