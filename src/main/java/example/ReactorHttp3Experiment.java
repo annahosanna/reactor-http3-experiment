@@ -137,7 +137,7 @@ public final class ReactorHttp3Experiment {
 
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1"
+      "clear"
     );
     return response.sendString(responseContent);
   }
@@ -217,7 +217,7 @@ public final class ReactorHttp3Experiment {
 
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\" ma=1"
+      "h3=\":443\"; ma=2592000; persist=1, h3-29=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
     );
 
     return response.sendString(responseContent);
