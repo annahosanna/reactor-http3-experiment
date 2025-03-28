@@ -3,7 +3,7 @@ package example;
 import java.sql.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
-// import org.h2.Driver;
+import org.h2.Driver;
 import org.h2.jdbcx.JdbcConnectionPool;
 
 // com.h2database:h2:2.1.214
@@ -39,10 +39,14 @@ public class FortuneDatabase {
     }
   }
 
-  public String getFortune() {
+  public static String getFortune() {
     String fortune = new String();
-    String dbUrl = "jdbc:h2:mem:fortunes";
-    try (Connection conn = DriverManager.getConnection(dbUrl)) {
+    String dbUrl = "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+    
+    try {
+    	// Hope this does not rely on scope
+    Class.forName("org.h2.Driver");
+    try (Connection conn = DriverManager.getConnection(dbUrl,"sa","")) {
       PreparedStatement stmt = conn.prepareStatement(
         "SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1"
       );
@@ -52,12 +56,21 @@ public class FortuneDatabase {
       fortune = "";
       e.printStackTrace();
     }
+    } catch (Exception e){
+    	e.printStackTrace();
+    	fortune = "";
+    }    
+
     return fortune;
   }
 
-  public void addFortune(String fortune) {
-    String dbUrl = "jdbc:h2:mem:fortunes";
-    try (Connection conn = DriverManager.getConnection(dbUrl)) {
+  public static void addFortune(String fortune) {
+    String dbUrl = "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+    try {
+    	// Hope this does not rely on scope
+    Class.forName("org.h2.Driver");
+
+    try (Connection conn = DriverManager.getConnection(dbUrl,"sa","")) {
       conn
         .createStatement()
         .execute(
@@ -73,5 +86,11 @@ public class FortuneDatabase {
     } catch (Exception e) {
       e.printStackTrace();
     }
-  }
+
+    } catch (Exception e){
+    	e.printStackTrace();
+    }    
+
+    
+    }
 }

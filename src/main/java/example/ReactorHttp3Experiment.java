@@ -16,6 +16,7 @@ import reactor.netty.http.HttpProtocol;
 import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
+import example.FortuneDatabase;
 
 public final class ReactorHttp3Experiment {
 
@@ -25,6 +26,7 @@ public final class ReactorHttp3Experiment {
   static final boolean COMPRESS = true;
 
   public static void main(String[] args) throws Exception {
+	  FortuneDatabase fortuneDatabase = new FortuneDatabase();
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(false)
@@ -122,7 +124,9 @@ public final class ReactorHttp3Experiment {
     for (int i = 0; i < stringArray.length; i++) {
       longString.concat(stringArray[i] + " ");
     }
-    Mono<String> responseContent = Mono.just(longString);
+    // Add longString to DB
+    // Set some usefull response headers and data
+    Mono<String> responseContent = Mono.just("<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a>" + longString+"</body></html>");
     return response.sendString(responseContent);
   }
 
@@ -233,7 +237,7 @@ public final class ReactorHttp3Experiment {
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
     String responseText = new String(
-      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
+      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a><br>"+ example.FortuneDatabase.getFortune() +"</br></body></html>"
     );
     Mono<String> responseContent;
     System.out.println(request.path().toString() + " HTTP/3");
