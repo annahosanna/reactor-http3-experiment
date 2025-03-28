@@ -1,6 +1,6 @@
 # reactor-http3-experiment
 
-# Yay Http/3 is working and integration with H2 database is working
+## Status: Http/3 with H2 integration is working and has been tested with Firefox
 
 ## Summary
 
@@ -8,9 +8,9 @@
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
 
-## Status
+## Testing Notes
 
-1. HTTP/3 is working!!
+1. HTTP/3 is working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to do it with this library. The benifit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
 
 - Firefox has settings to enable http3 with self signed certs. (see below)
 - Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).

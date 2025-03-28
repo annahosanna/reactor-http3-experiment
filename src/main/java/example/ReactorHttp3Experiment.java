@@ -1,5 +1,10 @@
 package example;
 
+import example.FortuneDatabase;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.multipart.Attribute;
+import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
 import java.io.File;
 import java.io.IOException;
@@ -16,7 +21,6 @@ import reactor.netty.http.HttpProtocol;
 import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
-import example.FortuneDatabase;
 
 public final class ReactorHttp3Experiment {
 
@@ -26,14 +30,12 @@ public final class ReactorHttp3Experiment {
   static final boolean COMPRESS = true;
 
   public static void main(String[] args) throws Exception {
-	  FortuneDatabase fortuneDatabase = new FortuneDatabase();
+    FortuneDatabase fortuneDatabase = new FortuneDatabase();
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(false)
       .compress(true)
-      .route(routes ->
-        routes.route(r -> true, ReactorHttp3Experiment::okResponseV11)
-      );
+      .route(routes -> routes.route(r -> true, ServeHttp11::okResponseV11));
 
     serverV11 = serverV11.protocol(HttpProtocol.HTTP11);
     DisposableServer disposableServerV11 = serverV11.bindNow();
@@ -42,9 +44,7 @@ public final class ReactorHttp3Experiment {
       .port(PORT)
       .wiretap(true)
       .compress(COMPRESS)
-      .route(routes ->
-        routes.route(r -> true, ReactorHttp3Experiment::okResponseV2)
-      );
+      .route(routes -> routes.route(r -> true, ServeHttp2::okResponseV2));
 
     // Deprecated: SslProvider.SslContextSpec.sslContext(SslProvider.ProtocolSslContextSpec)
     // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html
@@ -92,8 +92,8 @@ public final class ReactorHttp3Experiment {
     DisposableServer disposableServerV3 = serverV3
       .route(routes ->
         routes
-          .get("/fortune", ReactorHttp3Experiment::okResponseV3)
-          .post("/fortune", ReactorHttp3Experiment::okResponseV3)
+          .get("/fortune", ServeHttp3::okResponseV3)
+          .post("/fortune", ServeHttp3::processPostV3D1)
       )
       .bindNow();
 
@@ -102,171 +102,5 @@ public final class ReactorHttp3Experiment {
       disposableServerV2.onDispose(),
       disposableServerV3.onDispose()
     ).block();
-  }
-
-  private static NettyOutbound processPostV3(
-    HttpServerRequest request,
-    HttpServerResponse response
-  ) {
-    Flux<String> mapContent = request
-      .receiveForm()
-      .flatMap(data -> {
-        try {
-          return Mono.just("[" + data.getString() + "]");
-        } catch (IOException e) {
-          return Mono.just("[]");
-        }
-      });
-    List<String> output = new ArrayList<>();
-    mapContent.subscribe(output::add);
-    String[] stringArray = output.toArray(new String[0]);
-    String longString = new String();
-    for (int i = 0; i < stringArray.length; i++) {
-      longString.concat(stringArray[i] + " ");
-    }
-    // Add longString to DB
-    // Set some usefull response headers and data
-    Mono<String> responseContent = Mono.just("<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a>" + longString+"</body></html>");
-    return response.sendString(responseContent);
-  }
-
-  private static NettyOutbound okResponseV11(
-    HttpServerRequest request,
-    HttpServerResponse response
-  ) {
-    String imageText = new String(
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
-    );
-    String responseText = new String(
-      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
-    );
-    Mono<String> responseContent;
-    System.out.println(
-      request.hostName().toString() +
-      " " +
-      request.path().toString() +
-      " HTTP 1.1"
-    );
-
-    response.status(301);
-    try {
-      response.header(
-        "location",
-        "https://" +
-        java.net.InetAddress.getLocalHost().getHostName() +
-        "/fortune"
-      );
-    } catch (Exception e) {
-      response.header("location", "https://localhost/fortune");
-    }
-
-    if (
-      request
-        .path()
-        .toString()
-        .strip()
-        .toLowerCase()
-        .equals("favicon.ico".strip().toLowerCase()) ==
-      true
-    ) {
-      response.header("content-type", "image/svg+xml");
-      response.header("content-length", Integer.toString(imageText.length()));
-      responseContent = Mono.just(imageText);
-    } else {
-      response.header("content-type", "text/html");
-      response.header(
-        "content-length",
-        Integer.toString(responseText.length())
-      );
-      responseContent = Mono.just(responseText);
-    }
-    // response.header("ipgrade-insecure-requests", "1");
-    response.header("upgrade", "h3, h2");
-    response.header("connection", "Upgrade");
-
-    response.header("alt-svc", "clear");
-    return response.sendString(responseContent);
-  }
-
-  private static NettyOutbound okResponseV2(
-    HttpServerRequest request,
-    HttpServerResponse response
-  ) {
-    String imageText = new String(
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
-    );
-    String responseText = new String(
-      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
-    );
-    Mono<String> responseContent;
-    System.out.println(request.path().toString() + " HTTP/2");
-    if (
-      request
-        .path()
-        .toString()
-        .strip()
-        .toLowerCase()
-        .equals("favicon.ico".strip().toLowerCase()) ==
-      true
-    ) {
-      response.header("content-type", "image/svg+xml");
-      response.header("content-length", Integer.toString(imageText.length()));
-      responseContent = Mono.just(imageText);
-    } else {
-      response.header("content-type", "text/html");
-      response.header(
-        "content-length",
-        Integer.toString(responseText.length())
-      );
-      responseContent = Mono.just(responseText);
-    }
-
-    response.header(
-      "alt-svc",
-      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1"
-    );
-
-    return response.sendString(responseContent);
-  }
-
-  private static NettyOutbound okResponseV3(
-    HttpServerRequest request,
-    HttpServerResponse response
-  ) {
-    String imageText = new String(
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
-    );
-    String responseText = new String(
-      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a><br>"+ example.FortuneDatabase.getFortune() +"</br></body></html>"
-    );
-    Mono<String> responseContent;
-    System.out.println(request.path().toString() + " HTTP/3");
-    if (
-      request
-        .path()
-        .toString()
-        .strip()
-        .toLowerCase()
-        .equals("favicon.ico".strip().toLowerCase()) ==
-      true
-    ) {
-      response.header("content-type", "image/svg+xml");
-      response.header("content-length", Integer.toString(imageText.length()));
-      responseContent = Mono.just(imageText);
-    } else {
-      response.header("content-type", "text/html");
-      response.header(
-        "content-length",
-        Integer.toString(responseText.length())
-      );
-      responseContent = Mono.just(responseText);
-    }
-
-    response.header(
-      "alt-svc",
-      "h3=\":443\"; ma=2592000; persist=1, h3-29=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
-    );
-
-    return response.sendString(responseContent);
   }
 }

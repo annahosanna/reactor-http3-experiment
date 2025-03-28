@@ -19,7 +19,7 @@ public class FortuneDatabase {
     initializeDatabase();
   }
 
-  public void initializeDatabase() {
+  public static void initializeDatabase() {
     String[] initialFortunes = {
       "Today is your lucky day!",
       "Good fortune will come to you",
@@ -66,10 +66,10 @@ public class FortuneDatabase {
 
   public static void addFortune(String fortune) {
     String dbUrl = "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+    String trimmedFortune = new String(truncateString(fortune,254));
     try {
     	// Hope this does not rely on scope
     Class.forName("org.h2.Driver");
-
     try (Connection conn = DriverManager.getConnection(dbUrl,"sa","")) {
       conn
         .createStatement()
@@ -78,7 +78,7 @@ public class FortuneDatabase {
         );
       String sql = "INSERT INTO fortunes (text) VALUES (?)";
       try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-        stmt.setString(1, fortune);
+        stmt.setString(1, trimmedFortune);
         stmt.executeUpdate();
       } catch (Exception e) {
         e.printStackTrace();
@@ -93,4 +93,15 @@ public class FortuneDatabase {
 
     
     }
+  public static String truncateString(String text, int maxLength) {
+      if (text == null) {
+          return null;
+      }
+      if (text.length() <= maxLength) {
+          return text;
+      } else {
+          return text.substring(0, maxLength);
+      }
+  }
+
 }
