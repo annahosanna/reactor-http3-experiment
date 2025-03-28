@@ -1,7 +1,12 @@
 package example;
 
+import io.netty.handler.codec.http.multipart.HttpData;
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.NettyOutbound;
@@ -40,11 +45,11 @@ public final class ReactorHttp3Experiment {
       );
 
     // Deprecated: SslProvider.SslContextSpec.sslContext(SslProvider.ProtocolSslContextSpec)
-    // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html 
+    // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html
     // Use: reactor.netty.http.Http2SslContextSpec
     serverV2 = serverV2.secure(spec ->
       spec.sslContext(
-    		  Http2SslContextSpec.forServer(
+        Http2SslContextSpec.forServer(
           new File("certs.pem"),
           new File("key.pem")
         )
@@ -56,10 +61,10 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV3 = HttpServer.create()
       .port(PORT)
       .wiretap(false)
-      .compress(COMPRESS)
-      .route(routes ->
-        routes.route(r -> true, ReactorHttp3Experiment::okResponseV3)
-      );
+      .compress(COMPRESS);
+    //      .route(routes ->
+    //        routes.route(r -> true, ReactorHttp3Experiment::okResponseV3)
+    //      );
 
     serverV3 = serverV3.secure(spec ->
       spec.sslContext(
@@ -82,13 +87,43 @@ public final class ReactorHttp3Experiment {
           .maxStreamDataBidirectionalRemote(1000000)
           .maxStreamsBidirectional(100)
       );
-    DisposableServer disposableServerV3 = serverV3.bindNow();
+    DisposableServer disposableServerV3 = serverV3
+      .route(routes ->
+        routes
+          .get("/fortune", ReactorHttp3Experiment::okResponseV3)
+          .post("/fortune", ReactorHttp3Experiment::okResponseV3)
+      )
+      .bindNow();
 
     Mono.when(
       disposableServerV11.onDispose(),
       disposableServerV2.onDispose(),
       disposableServerV3.onDispose()
     ).block();
+  }
+
+  private static NettyOutbound processPostV3(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    Flux<String> mapContent = request
+      .receiveForm()
+      .flatMap(data -> {
+        try {
+          return Mono.just("[" + data.getString() + "]");
+        } catch (IOException e) {
+          return Mono.just("[]");
+        }
+      });
+    List<String> output = new ArrayList<>();
+    mapContent.subscribe(output::add);
+    String[] stringArray = output.toArray(new String[0]);
+    String longString = new String();
+    for (int i = 0; i < stringArray.length; i++) {
+      longString.concat(stringArray[i] + " ");
+    }
+    Mono<String> responseContent = Mono.just(longString);
+    return response.sendString(responseContent);
   }
 
   private static NettyOutbound okResponseV11(
@@ -102,13 +137,23 @@ public final class ReactorHttp3Experiment {
       "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
     );
     Mono<String> responseContent;
-    System.out.println(request.hostName().toString() + " " + request.path().toString() +" HTTP 1.1");
+    System.out.println(
+      request.hostName().toString() +
+      " " +
+      request.path().toString() +
+      " HTTP 1.1"
+    );
 
     response.status(301);
     try {
-    	response.header("location","https://" + java.net.InetAddress.getLocalHost().getHostName()+ "/fortune");
+      response.header(
+        "location",
+        "https://" +
+        java.net.InetAddress.getLocalHost().getHostName() +
+        "/fortune"
+      );
     } catch (Exception e) {
-    	response.header("location","https://localhost/fortune");
+      response.header("location", "https://localhost/fortune");
     }
 
     if (
@@ -135,10 +180,7 @@ public final class ReactorHttp3Experiment {
     response.header("upgrade", "h3, h2");
     response.header("connection", "Upgrade");
 
-    response.header(
-      "alt-svc",
-      "clear"
-    );
+    response.header("alt-svc", "clear");
     return response.sendString(responseContent);
   }
 
@@ -177,7 +219,8 @@ public final class ReactorHttp3Experiment {
 
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1");
+      "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1"
+    );
 
     return response.sendString(responseContent);
   }

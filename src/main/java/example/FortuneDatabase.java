@@ -3,14 +3,14 @@ package example;
 import java.sql.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import org.h2.Driver;
+// import org.h2.Driver;
 import org.h2.jdbcx.JdbcConnectionPool;
 
 // com.h2database:h2:2.1.214
 
 public class FortuneDatabase {
 
-  private final JdbcConnectionPool pool;
+  // private final JdbcConnectionPool pool;
 
   // ds = new JdbcDataSource();
   // ds.setURL("jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1");
@@ -40,9 +40,8 @@ public class FortuneDatabase {
   }
 
   public String getFortune() {
-    fortune = new String();
+    String fortune = new String();
     String dbUrl = "jdbc:h2:mem:fortunes";
-    Class.forName("org.h2.Driver");
     try (Connection conn = DriverManager.getConnection(dbUrl)) {
       PreparedStatement stmt = conn.prepareStatement(
         "SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1"
@@ -58,7 +57,6 @@ public class FortuneDatabase {
 
   public void addFortune(String fortune) {
     String dbUrl = "jdbc:h2:mem:fortunes";
-    Class.forName("org.h2.Driver");
     try (Connection conn = DriverManager.getConnection(dbUrl)) {
       conn
         .createStatement()
