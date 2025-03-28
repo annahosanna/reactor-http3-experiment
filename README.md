@@ -1,5 +1,7 @@
 # reactor-http3-experiment
 
+# Yay Http/3 is working and integration with H2 database is working
+
 ## Summary
 
 - This uses a combination of the examples referenced below, so I do not want to take credit for the similarities between this and those examples. Differences: There was not a single example which included the combined functionality to start three non blocking servers each serving a diffirent http protocol, routes which were seperate from the http server, and return various content. This readme is original work.
