@@ -1,6 +1,7 @@
 package example;
 
 import example.FortuneDatabase;
+import example.ServeCommon;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.multipart.Attribute;
@@ -93,7 +94,8 @@ public final class ReactorHttp3Experiment {
       .route(routes ->
         routes
           .get("/fortune", ServeHttp3::okResponseV3)
-          .post("/fortune", ServeHttp3::processPostV3D1)
+          .get("/favicon.ico", ServeCommon::returnFavicon)
+          .post("/fortune", ServeHttp3::processPostV3D2)
       )
       .bindNow();
 

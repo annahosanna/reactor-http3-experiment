@@ -77,14 +77,14 @@ public class ServeHttp3 {
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE)
     );
     fixContentType(request);
-    response.status(200);
 
-    // I have implemented this so many ways. Pretty sure the data being sent is not getting to the flux
+    // I have implemented this so many ways. Pretty sure the data being sent is not getting to the flux, or the flux is not returning all of the data
     String contentText = new String();
     Flux<HttpData> fluxHttpData = request.receiveForm();
-    Flux<String> fluxString = fluxHttpData.flatMap(data -> Flux.fromStream(data.toString());
+    Flux<String> fluxString = fluxHttpData.flatMap(lambdaHttpData ->
+      Flux.just(lambdaHttpData.toString())
+    );
     fluxString.subscribe(System.out::println);
-
     response.status(200);
     Mono<String> responseContent = Mono.just(contentText);
     return response.sendString(responseContent);
