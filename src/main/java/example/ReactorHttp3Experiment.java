@@ -35,17 +35,22 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(false)
-      .compress(true)
-      .route(routes -> routes.route(r -> true, ServeHttp11::okResponseV11));
+      .compress(true); //      .route(routes -> routes.route(r -> true, // ServeHttp11::okResponseV11))
 
     serverV11 = serverV11.protocol(HttpProtocol.HTTP11);
-    DisposableServer disposableServerV11 = serverV11.bindNow();
+    DisposableServer disposableServerV11 = serverV11
+      .route(routes ->
+        routes
+          .get("/fortune", ServeHttp11::okResponseV11)
+          .get("/favicon.ico", ServeCommon::returnFavicon)
+          .post("/fortune", ServeHttp11::processPostV11)
+      )
+      .bindNow();
 
     HttpServer serverV2 = HttpServer.create()
       .port(PORT)
       .wiretap(true)
-      .compress(COMPRESS)
-      .route(routes -> routes.route(r -> true, ServeHttp2::okResponseV2));
+      .compress(COMPRESS); //      .route(routes -> routes.route(r -> true, ServeHttp2::okResponseV2))
 
     // Deprecated: SslProvider.SslContextSpec.sslContext(SslProvider.ProtocolSslContextSpec)
     // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html
@@ -59,7 +64,14 @@ public final class ReactorHttp3Experiment {
       )
     );
     serverV2 = serverV2.protocol(HttpProtocol.H2);
-    DisposableServer disposableServerV2 = serverV2.bindNow();
+    DisposableServer disposableServerV2 = serverV2
+      .route(routes ->
+        routes
+          .get("/fortune", ServeHttp2::okResponseV2)
+          .get("/favicon.ico", ServeCommon::returnFavicon)
+          .post("/fortune", ServeHttp2::processPostV2)
+      )
+      .bindNow();
 
     HttpServer serverV3 = HttpServer.create()
       .port(PORT)
@@ -95,7 +107,7 @@ public final class ReactorHttp3Experiment {
         routes
           .get("/fortune", ServeHttp3::okResponseV3)
           .get("/favicon.ico", ServeCommon::returnFavicon)
-          .post("/fortune", ServeHttp3::processPostV3D2)
+          .post("/fortune", ServeHttp3::processPostV3)
       )
       .bindNow();
 

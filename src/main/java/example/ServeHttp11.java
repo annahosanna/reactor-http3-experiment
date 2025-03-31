@@ -1,6 +1,8 @@
 package example;
 
 import example.FortuneDatabase;
+import example.ServeCommon;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.multipart.Attribute;
@@ -26,16 +28,34 @@ public class ServeHttp11 {
 
   public ServeHttp11() {}
 
+  public static NettyOutbound processPostV11(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    ServeCommon.fixContentType(request);
+    response.status(301);
+    try {
+      response.header(
+        "location",
+        "https://" +
+        java.net.InetAddress.getLocalHost().getHostName() +
+        "/fortune"
+      );
+    } catch (Exception e) {
+      response.header("location", "https://localhost/fortune");
+    }
+    response.header("content-type", "text/html");
+    response.header("content-length", "0");
+
+    ServeCommon.addPostToDatabase(request);
+    return response.sendString(Mono.empty());
+  }
+
   public static NettyOutbound okResponseV11(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    String imageText = new String(
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
-    );
-    String responseText = new String(
-      "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">fortune</a></body></html>"
-    );
+    String responseText = ServeCommon.responseText();
     Mono<String> responseContent;
     System.out.println(
       request.hostName().toString() +
@@ -56,30 +76,12 @@ public class ServeHttp11 {
       response.header("location", "https://localhost/fortune");
     }
 
-    if (
-      request
-        .path()
-        .toString()
-        .strip()
-        .toLowerCase()
-        .equals("favicon.ico".strip().toLowerCase()) ==
-      true
-    ) {
-      response.header("content-type", "image/svg+xml");
-      response.header("content-length", Integer.toString(imageText.length()));
-      responseContent = Mono.just(imageText);
-    } else {
-      response.header("content-type", "text/html");
-      response.header(
-        "content-length",
-        Integer.toString(responseText.length())
-      );
-      responseContent = Mono.just(responseText);
-    }
+    response.header("content-type", "text/html");
+    response.header("content-length", Integer.toString(responseText.length()));
+    responseContent = Mono.just(responseText);
     // response.header("ipgrade-insecure-requests", "1");
     response.header("upgrade", "h3, h2");
     response.header("connection", "Upgrade");
-
     response.header("alt-svc", "clear");
     return response.sendString(responseContent);
   }

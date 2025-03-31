@@ -4,6 +4,8 @@
 
 ## Summary
 
+- I have put a lot of hours into doing things incorrectly; however,
+  it is particularly difficult to get data from a Flux after subscribing to it.
 - This uses a combination of the examples referenced below, so I do not want to take credit for the similarities between this and those examples. Differences: There was not a single example which included the combined functionality to start three non blocking servers each serving a diffirent http protocol, routes which were seperate from the http server, and return various content. This readme is original work.
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
