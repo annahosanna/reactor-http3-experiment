@@ -150,9 +150,12 @@ public class ServeCommon {
             // Cheating and filtering : and , to make life easier later
             return (
               "{\"" +
-              ((String) (entry.getKey())).replaceAll("[^a-zA-Z0-9\s]", "") +
+              ((String) (entry.getKey())).replaceAll("[^a-zA-Z0-9.\\s]+", "") +
               "\":\"" +
-              ((String) (entry.getValue())).replaceAll("[^a-zA-Z0-9\s]", "") +
+              ((String) (entry.getValue())).replaceAll(
+                  "[^a-zA-Z0-9.\\s]+",
+                  ""
+                ) +
               "\"}"
             );
           } else {
@@ -207,10 +210,7 @@ public class ServeCommon {
       String[] ss = result.split(",");
       String[] sc = ss[0].split(":");
       if (sc.length > 1) {
-        String cleanValue =
-          sc[1].replaceAll("\s+$", "")
-            .replaceAll("^\s+", "")
-            .replaceAll("[^a-zA-Z0-9\s]+", "");
+        String cleanValue = sc[1].replaceAll("[^a-zA-Z0-9.\\s]+", ""); // .replaceAll("^[\\s]+", "") // .replaceAll("[\\s]+$", "")
         System.out.println("Value: " + cleanValue);
         FortuneDatabase.addFortune(cleanValue);
       }
@@ -275,8 +275,6 @@ public class ServeCommon {
 
   public static Flux<String> convertMonoToFlux(Mono<String> rawFormData) {
     Flux<String> keyPairs = rawFormData.flatMapMany(ServeCommon::stringToFlux);
-
-    // keyPairs.subscribe(System.out::println);
     return keyPairs;
   }
 
