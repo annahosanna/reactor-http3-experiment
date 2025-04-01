@@ -4,9 +4,11 @@
 
 ## Summary
 
-- I have put a lot of hours into doing things incorrectly - a lot of this was related to how flaky getting data after subscribing is. I'm pretty sure that more than once I spent a very long time trying to figure out why I wasn't getting any data, and my attempts to redo it probably did work. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. To work around this I placed code (which would return a void) into a Filter.
-- This uses a combination of the examples referenced below, so I do not want to take credit for the similarities between this and those examples. Differences: There was not a single example which included the combined functionality to start three non blocking servers each serving a diffirent http protocol, routes which were seperate from the http server, and return various content. The most significant rhing is handling POSTs which is original work. This readme is original work. (I have included two implementations to process POSTs)
+- I have put a lot of hours into doing things incorrectly - a lot of this was related to how flaky getting data is after subscribing. I'm pretty sure that more than once I spent a very long time trying to figure out why I wasn't getting any data, and my attempts to redo it probably did work - but there was no output. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. To work around this I placed code (which would return a void) into a Filter.
+- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as structured data of the deserialized JSON form of `List<Map<String,String>>` for easy processing.
+- The GET routes and server start are mostly derived from the examples below. The most significant thing is handling form POSTs which is original work (and a lot of research). This readme is original work. (I have included two implementations to process POSTs)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
+- You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
 
 ## Testing Notes
