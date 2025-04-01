@@ -32,9 +32,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
-    // ServeCommon.addMonoStringToDatabase(monoString);
-
+    Mono<String> monoString = ServeCommon.getFormData(request);
     response.status(301);
     try {
       response.header(
@@ -49,7 +47,6 @@ public class ServeHttp11 {
     response.header("content-type", "text/html");
     response.header("content-length", "0");
 
-    // ServeCommon.addPostToDatabase(request);
     return response.sendString(monoString);
   }
 

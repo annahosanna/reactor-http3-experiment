@@ -34,9 +34,7 @@ public class ServeHttp3 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
-    // ServeCommon.addMonoStringToDatabase(monoString);
-
+    Mono<String> monoString = ServeCommon.getFormData(request);
     response.status(301);
     try {
       response.header(

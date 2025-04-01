@@ -36,18 +36,21 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    // ServeCommon.fixContentType(request);
-    // System.out.println("Adding a fortune");
     Mono<String> monoString = ServeCommon.getFormData(request);
-    // Mono<Void> mv = monoString.then();
-    // mv.subscribe(result -> System.out.println("Mono Void Subscribe: " + result)
-    // );
-    // monoString.subscribe(result -> {
-    //   System.out.println("Lambda result: " + result);
-    // });
+    response.status(301);
+    try {
+      response.header(
+        "location",
+        "https://" +
+        java.net.InetAddress.getLocalHost().getHostName() +
+        "/fortune"
+      );
+    } catch (Exception e) {
+      response.header("location", "https://localhost/fortune");
+    }
+    response.header("content-type", "text/html");
+    response.header("content-length", "0");
 
-    // Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
-    // ServeCommon.addMonoStringToDatabase(monoString);
     return response.sendString(monoString);
   }
 
