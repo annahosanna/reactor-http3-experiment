@@ -39,6 +39,7 @@ public class ServeHttp2 {
     // ServeCommon.fixContentType(request);
     // System.out.println("Adding a fortune");
     Mono<String> monoString = ServeCommon.getFormData(request);
+    monoString.subscribe(result -> { System.out.println("Lambda result: " + result);})
     return response.sendString(monoString);
   }
 
