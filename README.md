@@ -6,14 +6,15 @@
 
 - I have put a lot of hours into doing things incorrectly - a lot of this was related to how flaky getting data is after subscribing. I'm pretty sure that more than once I spent a very long time trying to figure out why I wasn't getting any data, and my attempts to redo it probably did work - but there was no output. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. To work around this I placed code (which would return a void) into a Filter.
 - POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as structured data of the deserialized JSON form of `List<Map<String,String>>` for easy processing.
-- The GET routes and server start are mostly derived from the examples below. The most significant thing is handling form POSTs which is original work (and a lot of research). This readme is original work. (I have included two implementations to process POSTs)
+- The GET routes and starting non blocking servers are mostly derived from the examples below. The most significant thing is handling form POSTs which is original work (and a lot of research). This readme is original work. (I have included two implementations to process POSTs)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
+- The project has satisfied the goal of supporting http/3 and identifying implemenation issues with browsers and servers; simulating business logic by reading and writing data to a database
 
 ## Testing Notes
 
-1. HTTP/3 and POSTs are working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to do it with this library. The benifit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
+1. HTTP/3 and POSTs are working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to get a working http/3 server with this library. The benifit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
 
 - Firefox has settings to enable http3 with self signed certs. (see below)
 - Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
@@ -77,9 +78,9 @@ Test your browser at `https://quic.nginx.org/quic.html` which has provides js to
 
 See: `https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Alt-Svc`
 
-- Safari and other apple products requiring http3 seem to be waiting for libcurl with http3 support
-- Chrome://flags and enable QUIC
-- Chrome://certificate-manager to manage custom certificates. Chrome requires the certificate to be issued by a trusted root for HTTP/3, so while you can import a self signed p12 to the macos system keystore, and chrome tls negotiation will work, it still will not be a trusted root.
+- Safari and other apple products requiring http3 seem to be waiting for macos to be updated with libcurl with http3 support
+- Chrome://flags and then enable QUIC
+- Chrome://certificate-manager to manage custom certificates. !! Chrome requires the certificate to be issued by a trusted root for HTTP/3 !! So while you can import a self signed p12 to the macos system keystore, and chrome tls negotiation will work, it still will not be a trusted root.
 - Firefox about:config network.http.http3.enabled and set to true
 - Also if you are using self signed certs, there are additional http3 firefox options which need to be enabled
 

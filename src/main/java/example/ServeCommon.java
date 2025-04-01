@@ -251,7 +251,7 @@ public class ServeCommon {
   // Example: fortune=abc%29%29%28*%26%5E%25%24%23%40abc&fortune2=def%7C%7D%7B%5B%5D%5C%3A%22%27%3B%3F%3E%3C%2C.%2Fdef
   // fortune=%21%40%23%24%25%5E%26*%28%29-_%2B%3D%7B%7D%7C%5B%5D%5C%3A%22%3B%27%3C%3E%3F%2C.%2F%7E++%60
   // Use regex to remove trailing newlines and other invalid char
-  // Ok chars are: a-zA-Z0-9*-_.+&=
+  // Ok chars are: a-zA-Z0-9*-_.+&=%
   // Split on &
   // Split on =
   // URL Decode each part
@@ -288,7 +288,7 @@ public class ServeCommon {
 
   public static String getFormParamName(String param) {
     String[] keyValuePair = param
-      .replaceAll("[^a-zA-Z0-9*-_.+&=]+", "")
+      .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
       .split("=");
     if (keyValuePair.length != 2) {
       return "Array to short";
@@ -298,7 +298,7 @@ public class ServeCommon {
 
   public static String getFormParamValue(String param) {
     String[] keyValuePair = param
-      .replaceAll("[^a-zA-Z0-9*-_.+&=]+", "")
+      .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
       .split("=");
     if (keyValuePair.length != 2) {
       return "Array to short";
