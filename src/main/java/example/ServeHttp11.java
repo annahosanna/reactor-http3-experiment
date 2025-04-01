@@ -33,7 +33,7 @@ public class ServeHttp11 {
     HttpServerResponse response
   ) {
     Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
-    ServeCommon.addMonoStringToDatabase(monoString);
+    // ServeCommon.addMonoStringToDatabase(monoString);
 
     response.status(301);
     try {

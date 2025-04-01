@@ -38,12 +38,16 @@ public class ServeHttp2 {
   ) {
     // ServeCommon.fixContentType(request);
     // System.out.println("Adding a fortune");
-    // Mono<String> monoString = ServeCommon.getFormData(request);
+    Mono<String> monoString = ServeCommon.getFormData(request);
+    // Mono<Void> mv = monoString.then();
+    // mv.subscribe(result -> System.out.println("Mono Void Subscribe: " + result)
+    // );
     // monoString.subscribe(result -> {
     //   System.out.println("Lambda result: " + result);
     // });
-    Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
-    ServeCommon.addMonoStringToDatabase(monoString);
+
+    // Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
+    // ServeCommon.addMonoStringToDatabase(monoString);
     return response.sendString(monoString);
   }
 
