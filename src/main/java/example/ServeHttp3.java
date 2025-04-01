@@ -30,37 +30,6 @@ public class ServeHttp3 {
 
   public ServeHttp3() {}
 
-  public static void fixContentType(HttpServerRequest request) {
-    // String contentType = request
-    //  .requestHeaders()
-    //  .get(HttpHeaderNames.CONTENT_TYPE);
-    if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .startsWith(
-          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-        )
-    ) {
-      request
-        .requestHeaders()
-        .set(
-          HttpHeaderNames.CONTENT_TYPE,
-          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-        );
-    }
-  }
-
-  public static String processHttp(HttpData httpData) {
-    try {
-      System.out.println("Received data");
-      return httpData.getString();
-    } catch (Exception e) {
-      return "Empty";
-    }
-  }
-
   public static NettyOutbound processPostV3(
     HttpServerRequest request,
     HttpServerResponse response
@@ -80,7 +49,7 @@ public class ServeHttp3 {
     response.header("content-type", "text/html");
     response.header("content-length", "0");
 
-    ServeCommon.addPostToDatabase(request);
+    // ServeCommon.addPostToDatabase(request);
     return response.sendString(Mono.empty());
   }
 

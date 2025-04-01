@@ -12,12 +12,10 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+// import java.util.concurrent.CountDownLatch;
+// import java.util.function.Consumer;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
@@ -38,21 +36,10 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    ServeCommon.fixContentType(request);
-    System.out.println("Adding a fortune");
-    Flux<HttpData> fluxHttpData = request.receiveForm();
-    Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData
-      .collectMap(ServeCommon::getHttpDataName, ServeCommon::getHttpDataValue)
-      .delayElement(Duration.ofMillis(100));
-    Mono<String> monoString = ServeCommon.convertMonoMapToStringGeneric(
-      monoMapStringHttpData
-    );
-
-    monoString.subscribe(result -> {
-      System.out.println("Result: " + result);
-    });
-    response.status(200);
-    return response.sendString(Mono.empty());
+    // ServeCommon.fixContentType(request);
+    // System.out.println("Adding a fortune");
+    Mono<String> monoString = ServeCommon.getFormData(request);
+    return response.sendString(monoString);
   }
 
   public static NettyOutbound okResponseV2(

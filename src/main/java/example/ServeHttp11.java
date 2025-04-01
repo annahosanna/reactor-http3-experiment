@@ -47,7 +47,7 @@ public class ServeHttp11 {
     response.header("content-type", "text/html");
     response.header("content-length", "0");
 
-    ServeCommon.addPostToDatabase(request);
+    // ServeCommon.addPostToDatabase(request);
     return response.sendString(Mono.empty());
   }
 

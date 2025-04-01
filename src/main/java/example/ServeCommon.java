@@ -8,8 +8,11 @@ import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -132,7 +135,7 @@ public class ServeCommon {
 
   // Convert Map to JSON
   // Should do this with a real JSON library in case there are any weird Key and Value
-  public static <K, V> Mono<String> convertMonoMapToStringGeneric(
+  public static <K, V> Mono<String> convertMonoMapToMonoStringGeneric(
     Mono<Map<K, V>> monoMap
   ) {
     return monoMap.map(map ->
@@ -160,27 +163,28 @@ public class ServeCommon {
     );
   }
 
-  Mono<String> getMonoString(HttpServerRequest request) {
+  // Convert receive ByteBufMono to StringMono
+  public static Mono<String> getMonoString(HttpServerRequest request) {
     Mono<String> monoString = request
       .receive()
       .aggregate()
       .retain()
       .asString()
-      .defaultIfEmpty("empty")
-      .delayElement(Duration.ofMillis(100));
+      .defaultIfEmpty("")
+      .delayElement(Duration.ofMillis(100)); // Delay on next - no delay on empty
     return monoString;
   }
 
-  static void addPostToDatabase(HttpServerRequest request) {
-    System.out.println("Adding a fortune");
+  public static Mono<String> getMonoStringFromFlux(HttpServerRequest request) {
     Flux<HttpData> fluxHttpData = request.receiveForm();
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData
       .collectMap(ServeCommon::getHttpDataName, ServeCommon::getHttpDataValue)
       .delayElement(Duration.ofMillis(100));
-    Mono<String> monoString = ServeCommon.convertMonoMapToStringGeneric(
-      monoMapStringHttpData
-    );
+    return ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringHttpData);
+  }
 
+  // It would be more flexable if I passed a lambda here
+  public static void addMonoStringToDatabase(Mono<String> monoString) {
     monoString.subscribe(result -> {
       System.out.println("Result: " + result);
       ArrayList<String> arrayList = new ArrayList<String>();
@@ -203,11 +207,69 @@ public class ServeCommon {
     });
   }
 
-  static String responseText() {
+  public static String responseText() {
     return (
       "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
       example.FortuneDatabase.getFortune() +
       "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
     );
+  }
+
+  // Example: fortune=abc%29%29%28*%26%5E%25%24%23%40abc&fortune2=def%7C%7D%7B%5B%5D%5C%3A%22%27%3B%3F%3E%3C%2C.%2Fdef
+  // Split on &
+  // Split on =
+  // URL Decode each part
+  public static Mono<String> getFormData(HttpServerRequest request) {
+    if (
+      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
+      request
+        .requestHeaders()
+        .get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .startsWith(
+          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
+            .toLowerCase()
+        )
+    ) {
+      request
+        .requestHeaders()
+        .set(
+          HttpHeaderNames.CONTENT_TYPE,
+          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
+        );
+    } else {
+      return Mono.empty();
+    }
+    Mono<String> rawMonoString = getMonoString(request);
+    Flux<String> fluxString = convertMonoToFlux(rawMonoString);
+    Mono<Map<String, String>> monoMapStringString = fluxString
+      .collectMap(ServeCommon::getFormParamName, ServeCommon::getFormParamValue)
+      .delayElement(Duration.ofMillis(100));
+    return ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString);
+  }
+
+  public static String getFormParamName(String param) {
+    String[] keyValuePair = param.replaceAll("[^a-zA-Z0-9%&=]+", "").split("=");
+    return URLDecoder.decode(keyValuePair[0], StandardCharsets.UTF_8);
+  }
+
+  public static String getFormParamValue(String param) {
+    String[] keyValuePair = param.replaceAll("[^a-zA-Z0-9%&=]+", "").split("=");
+    return URLDecoder.decode(keyValuePair[1], StandardCharsets.UTF_8);
+  }
+
+  public static List<String> splitFormParameters(String parameter) {
+    return Arrays.asList(parameter.split("&"));
+  }
+
+  public static Flux<String> getParameterFlux(String parameter) {
+    return Flux.fromIterable(splitFormParameters(parameter));
+  }
+
+  public static Flux<String> convertMonoToFlux(Mono<String> rawFormData) {
+    Flux<String> keyPairs = rawFormData.flatMapMany(
+      ServeCommon::getParameterFlux
+    );
+    return keyPairs;
   }
 }
