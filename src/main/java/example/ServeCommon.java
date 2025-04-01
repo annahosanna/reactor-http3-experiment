@@ -1,10 +1,12 @@
 package example;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import example.FortuneDatabase;
 import example.ParameterPOJO;
+import example.ParametersPOJO;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.multipart.Attribute;
@@ -137,8 +139,6 @@ public class ServeCommon {
     );
   }
 
-  // Convert Map to JSON
-  // Should do this with a real JSON library in case there are any weird Key and Value
   public static <K, V> Mono<String> convertMonoMapToMonoStringGeneric(
     Mono<Map<K, V>> monoMap
   ) {
@@ -151,8 +151,6 @@ public class ServeCommon {
             (entry.getKey() instanceof String) &&
             (entry.getValue() instanceof String)
           ) {
-            // Cheating and filtering : and , to make life easier later
-            // Jackson to escape a string
             ObjectMapper mapper = new ObjectMapper();
             String key = new String();
             String value = new String();
@@ -161,16 +159,16 @@ public class ServeCommon {
               value = mapper.writeValueAsString((String) (entry.getValue()));
             } catch (Exception e) {
               System.out.println("Ptoblem converting String to JSON String");
-              key = ((String) (entry.getKey())).replaceAll(
+              key = ("\"" + ((String) (entry.getKey())) + "\"").replaceAll(
                   "[^a-zA-Z0-9.\\s]+",
                   ""
                 );
-              value = ((String) (entry.getValue())).replaceAll(
+              value = ("\"" + ((String) (entry.getValue())) + "\"").replaceAll(
                   "[^a-zA-Z0-9.\\s]+",
                   ""
                 );
             }
-            return ("{\"" + key + "\":\"" + value + "\"}");
+            return ("{" + key + ":" + value + "}");
           } else {
             return (
               "{\"" + entry.getKey() + "\":\"" + entry.getValue() + "\"}"
@@ -218,37 +216,35 @@ public class ServeCommon {
 
   // Only process first parameter
   public static boolean doFilter(String result) {
+    System.out.println("JSON value: " + result);
     ObjectMapper mapper = new ObjectMapper();
     String key = new String();
     String value = new String();
     try {
-      // Convert string to pojo
-      ParameterPOJO pojo = mapper.readValue(result, ParameterPOJO.class);
-      // Get first item (paramter) in array
-      Map<String, String> map = pojo.parameters.iterator().next();
-      // Get first key
+      List<Map<String, String>> pojo = new ObjectMapper()
+        .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+      Map<String, String> map = pojo.iterator().next();
       key = map.keySet().iterator().next();
-      // Get value of key
       value = map.get(key);
     } catch (Exception e) {
-      System.out.println("Ptoblem converting JSON to map");
+      e.printStackTrace();
       if (result.length() > 0) {
         String[] ss = result.split(",");
         String[] sc = ss[0].split(":");
-        key = sc[0];
-        value = sc[1];
-      }
-      if (value.length() > 0) {
-        String cleanValue = value
-          .replaceAll("[^a-zA-Z0-9.,!?\\s]+", "")
-          .replaceAll("^[\\s]+", "")
-          .replaceAll("[\\s]+$", "");
-        System.out.println("Value: " + cleanValue);
-        FortuneDatabase.addFortune(cleanValue);
-      } else {
-        System.out.println("No value");
+        key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+        value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
       }
     }
+    String cleanValue = value
+      .replaceAll("^[\\s]+", "")
+      .replaceAll("[\\s]+$", "");
+    System.out.println("Key: " + key + "    Value:" + value);
+    if (value.length() > 0) {
+      FortuneDatabase.addFortune(value);
+    } else {
+      System.out.println("No value");
+    }
+
     return true;
   }
 
