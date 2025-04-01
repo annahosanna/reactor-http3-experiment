@@ -160,6 +160,7 @@ public class ServeCommon {
               key = mapper.writeValueAsString((String) (entry.getKey()));
               value = mapper.writeValueAsString((String) (entry.getValue()));
             } catch (Exception e) {
+              System.out.println("Ptoblem converting String to JSON String");
               key = ((String) (entry.getKey())).replaceAll(
                   "[^a-zA-Z0-9.\\s]+",
                   ""
@@ -176,7 +177,7 @@ public class ServeCommon {
             );
           }
         })
-        .collect(Collectors.joining(",", "{[", "]}"))
+        .collect(Collectors.joining(",", "[", "]"))
     );
   }
 
@@ -230,6 +231,7 @@ public class ServeCommon {
       // Get value of key
       value = map.get(key);
     } catch (Exception e) {
+      System.out.println("Ptoblem converting JSON to map");
       if (result.length() > 0) {
         String[] ss = result.split(",");
         String[] sc = ss[0].split(":");
