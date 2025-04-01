@@ -11,7 +11,7 @@
 
 ## Testing Notes
 
-1. HTTP/3 is working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to do it with this library. The benifit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
+1. HTTP/3 and POSTs are working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to do it with this library. The benifit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
 
 - Firefox has settings to enable http3 with self signed certs. (see below)
 - Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
@@ -85,3 +85,4 @@ See: `https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Alt-Sv
 
 - `https://github.com/reactor/reactor-netty/tree/main/reactor-netty-examples/src/main/java/reactor/netty/examples/http`
 - `https://projectreactor.io/docs/netty/release/reference/http-server.html`
+- Reading the unit tests is also very helpful
