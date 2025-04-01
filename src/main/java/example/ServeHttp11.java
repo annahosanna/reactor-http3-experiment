@@ -32,7 +32,9 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    ServeCommon.fixContentType(request);
+    Mono<String> monoString = ServeCommon.getMonoStringFromFlux(request);
+    ServeCommon.addMonoStringToDatabase(monoString);
+
     response.status(301);
     try {
       response.header(
@@ -48,7 +50,7 @@ public class ServeHttp11 {
     response.header("content-length", "0");
 
     // ServeCommon.addPostToDatabase(request);
-    return response.sendString(Mono.empty());
+    return response.sendString(monoString);
   }
 
   public static NettyOutbound okResponseV11(

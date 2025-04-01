@@ -127,9 +127,9 @@ public class ServeCommon {
             value = "";
           }
 
-          return (entry.getKey() + ":" + value);
+          return ("{" + entry.getKey() + ":" + value + "}");
         })
-        .collect(Collectors.joining(", ", "{", "}"))
+        .collect(Collectors.joining(", ", "{[", "]}"))
     );
   }
 
@@ -149,17 +149,19 @@ public class ServeCommon {
           ) {
             // Cheating and filtering : and , to make life easier later
             return (
-              "\"" +
+              "{\"" +
               ((String) (entry.getKey())).replaceAll("[^a-zA-Z0-9\s]", "") +
               "\":\"" +
               ((String) (entry.getValue())).replaceAll("[^a-zA-Z0-9\s]", "") +
-              "\""
+              "\"}"
             );
           } else {
-            return ("\"" + entry.getKey() + "\":\"" + entry.getValue() + "\"");
+            return (
+              "{\"" + entry.getKey() + "\":\"" + entry.getValue() + "\"}"
+            );
           }
         })
-        .collect(Collectors.joining(",", "{", "}"))
+        .collect(Collectors.joining(",", "{[", "]}"))
     );
   }
 
@@ -250,11 +252,17 @@ public class ServeCommon {
 
   public static String getFormParamName(String param) {
     String[] keyValuePair = param.replaceAll("[^a-zA-Z0-9%&=]+", "").split("=");
+    if (keyValuePair.length != 2) {
+      return "Array to short";
+    }
     return URLDecoder.decode(keyValuePair[0], StandardCharsets.UTF_8);
   }
 
   public static String getFormParamValue(String param) {
     String[] keyValuePair = param.replaceAll("[^a-zA-Z0-9%&=]+", "").split("=");
+    if (keyValuePair.length != 2) {
+      return "Array to short";
+    }
     return URLDecoder.decode(keyValuePair[1], StandardCharsets.UTF_8);
   }
 
