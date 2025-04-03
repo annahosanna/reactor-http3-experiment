@@ -1,64 +1,41 @@
 package example;
 
-import com.fasterxml.jackson.core.JsonParseException;
+// import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
+// import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import example.FortuneDatabase;
-import example.ParameterPOJO;
-import example.ParametersPOJO;
+// import example.FortuneDatabase;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
-import java.io.File;
-import java.io.IOException;
+// import java.io.File;
+// import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
+// import java.util.ArrayList;
+// import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Objects;
+// import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.netty.DisposableServer;
+// import reactor.netty.DisposableServer;
 import reactor.netty.NettyOutbound;
-import reactor.netty.http.Http2SslContextSpec;
-import reactor.netty.http.Http3SslContextSpec;
-import reactor.netty.http.HttpProtocol;
-import reactor.netty.http.server.HttpServer;
+// import reactor.netty.http.Http2SslContextSpec;
+// import reactor.netty.http.Http3SslContextSpec;
+// import reactor.netty.http.HttpProtocol;
+// import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
 public class ServeCommon {
 
   public ServeCommon() {}
-
-  public static void fixContentType(HttpServerRequest request) {
-    // String contentType = request
-    //  .requestHeaders()
-    //  .get(HttpHeaderNames.CONTENT_TYPE);
-    if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .startsWith(
-          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-        )
-    ) {
-      request
-        .requestHeaders()
-        .set(
-          HttpHeaderNames.CONTENT_TYPE,
-          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-        );
-    }
-  }
 
   public static NettyOutbound returnFavicon(
     HttpServerRequest request,
@@ -78,16 +55,34 @@ public class ServeCommon {
     return response.sendString(responseContent);
   }
 
+  public static void setCommonHeaders(HttpServerResponse response) {
+    response.status(301);
+    try {
+      response.header(
+        "location",
+        "https://" +
+        java.net.InetAddress.getLocalHost().getHostName() +
+        "/fortune"
+      );
+    } catch (Exception e) {
+      response.header("location", "https://localhost/fortune");
+    }
+    response.header("content-type", "text/html");
+    response.header("content-length", "0");
+  }
+
   public static String getHttpDataName(HttpData httpData) {
     String name = new String();
     if (httpData instanceof Attribute) {
       Attribute attribute = (Attribute) httpData;
-      name = attribute.getName() == null ? "NoName" : attribute.getName();
+      name = ((attribute.getName() == null) || (attribute.getName().isEmpty()))
+        ? "null"
+        : attribute.getName();
     } else if (httpData instanceof FileUpload) {
       FileUpload fileUpload = (FileUpload) httpData;
       name = fileUpload.getFilename();
     } else {
-      name = "";
+      name = "null";
     }
     return name;
   }
@@ -97,46 +92,17 @@ public class ServeCommon {
     if (httpData instanceof Attribute) {
       Attribute attribute = (Attribute) httpData;
       try {
-        value = attribute.getValue();
+        value = (attribute.getValue() == null) ? null : attribute.getValue();
       } catch (Exception e) {
-        value = "";
+        value = null;
       }
     } else if (httpData instanceof FileUpload) {
-      FileUpload fileUpload = (FileUpload) httpData;
-      value = fileUpload.getFilename();
+      // FileUpload fileUpload = (FileUpload) httpData;
+      value = null;
     } else {
-      value = "";
+      value = null;
     }
     return value;
-  }
-
-  public static <K, V> Mono<String> convertMonoMapToString(
-    Mono<Map<K, V>> monoMap
-  ) {
-    return monoMap.map(map ->
-      map
-        .entrySet()
-        .stream()
-        .map(entry -> {
-          String value = new String();
-          if (entry.getValue() instanceof Attribute) {
-            Attribute attribute = (Attribute) entry.getValue();
-            try {
-              value = attribute.getValue();
-            } catch (Exception e) {
-              value = "";
-            }
-          } else if (entry.getValue() instanceof FileUpload) {
-            FileUpload fileUpload = (FileUpload) entry.getValue();
-            value = fileUpload.getFilename();
-          } else {
-            value = "";
-          }
-
-          return ("{" + entry.getKey() + ":" + value + "}");
-        })
-        .collect(Collectors.joining(", ", "{[", "]}"))
-    );
   }
 
   public static <K, V> Mono<String> convertMonoMapToMonoStringGeneric(
@@ -148,17 +114,27 @@ public class ServeCommon {
         .stream()
         .map(entry -> {
           if (
-            (entry.getKey() instanceof String) &&
-            (entry.getValue() instanceof String)
+            ((Objects.isNull(entry.getKey())) ||
+              (entry.getKey() instanceof String)) &&
+            ((Objects.isNull(entry.getValue())) ||
+              (entry.getValue() instanceof String))
           ) {
             ObjectMapper mapper = new ObjectMapper();
             String key = new String();
             String value = new String();
             try {
-              key = mapper.writeValueAsString((String) (entry.getKey()));
-              value = mapper.writeValueAsString((String) (entry.getValue()));
+              if (Objects.isNull(entry.getKey())) {
+                key = "\"null\"";
+              } else {
+                key = mapper.writeValueAsString((String) (entry.getKey()));
+              }
+              if (Objects.isNull(entry.getValue())) {
+                value = "null";
+              } else {
+                value = mapper.writeValueAsString((String) (entry.getValue()));
+              }
             } catch (Exception e) {
-              System.out.println("Ptoblem converting String to JSON String");
+              System.out.println("Problem converting String to JSON String");
               key = ("\"" + ((String) (entry.getKey())) + "\"").replaceAll(
                   "[^a-zA-Z0-9.\\s]+",
                   ""
@@ -168,11 +144,9 @@ public class ServeCommon {
                   ""
                 );
             }
-            return ("{" + key + ":" + value + "}");
+            return ("{\"Key\":" + key + ",\"Value\":" + value + "}");
           } else {
-            return (
-              "{\"" + entry.getKey() + "\":\"" + entry.getValue() + "\"}"
-            );
+            return ("{\"Key\":\"null\",\"Value\":null\"}");
           }
         })
         .collect(Collectors.joining(",", "[", "]"))
@@ -186,24 +160,23 @@ public class ServeCommon {
       .aggregate()
       .retain()
       .asString()
-      .defaultIfEmpty("\"\":\"\"")
-      .delayElement(Duration.ofMillis(100)); // Delay on next - no delay on empty
+      .defaultIfEmpty("\"\"=\"\"")
+      .delayElement(Duration.ofMillis(100)); // Uses "parallel" scheduler. Delay notification that stream is ready to be consumed (unless it is empty)
     return monoString;
   }
 
+  // Wrap request to json conversion
   public static Mono<String> getMonoStringFromFlux(HttpServerRequest request) {
+    // Built in function to convert a Mono<ByteBuf> into an HttpData object for each parameter (Flux)
     Flux<HttpData> fluxHttpData = request.receiveForm();
+    // This applies a key function, and a value (defaults to the flux object). In this case a value function has been added as well to return a String rather than HttpData
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData
       .collectMap(ServeCommon::getHttpDataName, ServeCommon::getHttpDataValue)
       .delayElement(Duration.ofMillis(100));
-    return ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringHttpData);
-  }
-
-  // It would be more flexable if I passed a lambda here
-  public static void addMonoStringToDatabase(Mono<String> monoString) {
-    monoString.doOnNext(result -> {
-      System.out.println("Result: " + result);
-    });
+    // Collect all of the map entries into a single string
+    return ServeCommon.convertMonoMapToMonoStringGeneric(
+      monoMapStringHttpData
+    ).filter(ServeCommon::doFilter);
   }
 
   public static String responseText() {
@@ -214,18 +187,27 @@ public class ServeCommon {
     );
   }
 
-  // Only process first parameter
+  // This can be called from then()
+  public static void updateDBWithString(String value) {
+    System.out.println("Value:" + value);
+    if ((!Objects.isNull(value)) && (value.length() > 0)) {
+      FortuneDatabase.addFortune(value);
+    } else {
+      System.out.println("No value");
+    }
+  }
+
+  // Only process first parameter. JDBC Code in lambda blocks so need to move this to a seperate worker thread with callable - although H2 is in memory so I am not really sure if the overhead is worth it.
   public static boolean doFilter(String result) {
     System.out.println("JSON value: " + result);
-    ObjectMapper mapper = new ObjectMapper();
     String key = new String();
     String value = new String();
     try {
       List<Map<String, String>> pojo = new ObjectMapper()
         .readValue(result, new TypeReference<List<Map<String, String>>>() {});
       Map<String, String> map = pojo.iterator().next();
-      key = map.keySet().iterator().next();
-      value = map.get(key);
+      key = map.get("Key");
+      value = map.get("Value");
     } catch (Exception e) {
       e.printStackTrace();
       if (result.length() > 0) {
@@ -235,26 +217,12 @@ public class ServeCommon {
         value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
       }
     }
-    String cleanValue = value
-      .replaceAll("^[\\s]+", "")
-      .replaceAll("[\\s]+$", "");
-    System.out.println("Key: " + key + "    Value:" + value);
-    if (value.length() > 0) {
-      FortuneDatabase.addFortune(value);
-    } else {
-      System.out.println("No value");
-    }
+
+    updateDBWithString(value);
 
     return true;
   }
 
-  // Example: fortune=abc%29%29%28*%26%5E%25%24%23%40abc&fortune2=def%7C%7D%7B%5B%5D%5C%3A%22%27%3B%3F%3E%3C%2C.%2Fdef
-  // fortune=%21%40%23%24%25%5E%26*%28%29-_%2B%3D%7B%7D%7C%5B%5D%5C%3A%22%3B%27%3C%3E%3F%2C.%2F%7E++%60
-  // Use regex to remove trailing newlines and other invalid char
-  // Ok chars are: a-zA-Z0-9*-_.+&=%
-  // Split on &
-  // Split on =
-  // URL Decode each part
   public static Mono<String> getFormData(HttpServerRequest request) {
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
@@ -286,28 +254,50 @@ public class ServeCommon {
     ).filter(ServeCommon::doFilter);
   }
 
+  // Functions for maps
+  // Ok chars in post param a-zA-Z0-9*-_.+&=%
+  // Split on & (trim off ends)
+  // Split on = (could be null(- will split still work)
+  // 'null', 'true', 'false', number, string are valid in json
   public static String getFormParamName(String param) {
-    String[] keyValuePair = param
-      .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-      .split("=");
-    if (keyValuePair.length != 2) {
-      return "Array to short";
+    String keyValuePair = param;
+    if (param.length() - param.replace("=", "").length() != 1) {
+      // bad
+      return "null";
+    } else {
+      String keyValue = keyValuePair
+        .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+        .replaceAll("[=][a-zA-Z0-9*-_.+&%]*$", "");
+      if (keyValue.length() == 0) {
+        return "null";
+      } else {
+        try {
+          return URLDecoder.decode(keyValue, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+          return "null";
+        }
+      }
     }
-    return URLDecoder.decode(keyValuePair[0], StandardCharsets.UTF_8);
   }
 
   public static String getFormParamValue(String param) {
-    String[] keyValuePair = param
-      .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-      .split("=");
-    if (keyValuePair.length != 2) {
-      return "Array to short";
+    String keyValuePair = param;
+    if (param.length() - param.replace("=", "").length() != 1) {
+      return null;
+    } else {
+      String valueValue = keyValuePair
+        .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+        .replaceAll("^[a-zA-Z0-9*-_.+&%]+[=]", "");
+      if (valueValue.length() == 0) {
+        return null;
+      } else {
+        try {
+          return URLDecoder.decode(valueValue, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+          return null;
+        }
+      }
     }
-    return URLDecoder.decode(keyValuePair[1], StandardCharsets.UTF_8);
-  }
-
-  public static Flux<String> getParameterFlux(String parameter) {
-    return Flux.fromIterable(Arrays.asList(parameter.split("&")));
   }
 
   public static Flux<String> convertMonoToFlux(Mono<String> rawFormData) {
@@ -316,10 +306,22 @@ public class ServeCommon {
   }
 
   public static Flux<String> stringToFlux(String str) {
-    if (str.contains("&")) {
-      return Flux.fromArray(str.split("&"));
+    String cleanString = str
+      .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+      .replaceAll("[&]+", "&")
+      .replaceAll("[=][a-zA-Z0-9*-_.+%]+[=]", "=")
+      .replaceAll("[=]+", "=")
+      .replaceAll("^[=]+", "")
+      .replaceAll("^[&]+", "")
+      .replaceAll("[&]+$", "")
+      .replaceAll("[&][=]", "&null=");
+    // .replaceAll("[&][a-zA-Z0-9*-_.+%]+$", "&null=");
+    //.replaceAll("^[a-zA-Z0-9*-_.+%]+$", "null=");
+    System.out.println("Post param: " + cleanString);
+    if (cleanString.contains("&")) {
+      return Flux.fromArray(cleanString.split("&"));
     } else {
-      return Flux.just(str);
+      return Flux.just(cleanString);
     }
   }
 }

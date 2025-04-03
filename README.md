@@ -4,13 +4,13 @@
 
 ## Summary
 
-- I have put a lot of hours into doing things incorrectly - a lot of this was related to how flaky getting data is after subscribing. I'm pretty sure that more than once I spent a very long time trying to figure out why I wasn't getting any data, and my attempts to redo it probably did work - but there was no output. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. To work around this I placed code (which would return a void) into a Filter.
+- I have put a lot of hours into doing things incorrectly - a lot of this was related to how flaky getting data is after subscribing. I'm pretty sure that more than once I spent a very long time trying to figure out why I wasn't getting any data, and my attempts to redo it probably did work - but there was no output. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. To work around this I placed code (which would return a void) into a Filter. (Ideally I would have like a method that took Mono<T> as input and returned Monot<T> as output)
 - POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as structured data of the deserialized JSON form of `List<Map<String,String>>` for easy processing.
 - The GET routes and starting non blocking servers are mostly derived from the examples below. The most significant thing is handling form POSTs which is original work (and a lot of research). This readme is original work. (I have included two implementations to process POSTs)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
-- The project has satisfied the goal of supporting http/3 and identifying implemenation issues with browsers and servers; simulating business logic by reading and writing data to a database
+- The project has satisfied the goal of supporting http/3 and identifying implemenation issues with browsers and servers; and simulating an end to end workflow by reading and writing data to a database
 
 ## Testing Notes
 

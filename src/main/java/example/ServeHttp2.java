@@ -37,20 +37,7 @@ public class ServeHttp2 {
     HttpServerResponse response
   ) {
     Mono<String> monoString = ServeCommon.getFormData(request);
-    response.status(301);
-    try {
-      response.header(
-        "location",
-        "https://" +
-        java.net.InetAddress.getLocalHost().getHostName() +
-        "/fortune"
-      );
-    } catch (Exception e) {
-      response.header("location", "https://localhost/fortune");
-    }
-    response.header("content-type", "text/html");
-    response.header("content-length", "0");
-
+    ServeCommon.setCommonHeaders(response);
     return response.sendString(monoString);
   }
 
