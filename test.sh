@@ -6,7 +6,7 @@
 #sleep 1
 #curl --cacert ./certs.pem https://gks-macbook-air.local/fortune -d "param0" -i -H "Content-Type:application/x-www-form-urlencoded" -vvv
 #sleep 1
-for i in {1..1000}
+for i in {1..1100}
 do
-curl --cacert ./certs.pem https://gks-macbook-air.local/fortune -d "param${i}=value1" -i -H "Content-Type:application/x-www-form-urlencoded" -vvv &
+curl --cacert ./certs.pem https://gks-macbook-air.local/fortune -d "param${i}=value${i}" -i -H "Content-Type:application/x-www-form-urlencoded" -vvv &
 done

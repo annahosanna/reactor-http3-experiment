@@ -160,8 +160,9 @@ public class ServeCommon {
       .aggregate()
       .retain()
       .asString()
-      .defaultIfEmpty("\"\"=\"\"")
-      .delayElement(Duration.ofMillis(100)); // Uses "parallel" scheduler. Delay notification that stream is ready to be consumed (unless it is empty)
+      .delayElement(Duration.ofMillis(50))
+      .defaultIfEmpty("\"\"=\"\"");
+    //.delayElement(Duration.ofMillis(100)); // Uses "parallel" scheduler. Delay notification that stream is ready to be consumed (unless it is empty)
     return monoString;
   }
 
@@ -170,9 +171,11 @@ public class ServeCommon {
     // Built in function to convert a Mono<ByteBuf> into an HttpData object for each parameter (Flux)
     Flux<HttpData> fluxHttpData = request.receiveForm();
     // This applies a key function, and a value (defaults to the flux object). In this case a value function has been added as well to return a String rather than HttpData
-    Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData
-      .collectMap(ServeCommon::getHttpDataName, ServeCommon::getHttpDataValue)
-      .delayElement(Duration.ofMillis(100));
+    Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData.collectMap(
+      ServeCommon::getHttpDataName,
+      ServeCommon::getHttpDataValue
+    );
+    //.delayElement(Duration.ofMillis(100));
     // Collect all of the map entries into a single string
     return ServeCommon.convertMonoMapToMonoStringGeneric(
       monoMapStringHttpData
@@ -246,9 +249,11 @@ public class ServeCommon {
     }
     Mono<String> rawMonoString = getMonoString(request);
     Flux<String> fluxString = convertMonoToFlux(rawMonoString);
-    Mono<Map<String, String>> monoMapStringString = fluxString
-      .collectMap(ServeCommon::getFormParamName, ServeCommon::getFormParamValue)
-      .delayElement(Duration.ofMillis(100));
+    Mono<Map<String, String>> monoMapStringString = fluxString.collectMap(
+      ServeCommon::getFormParamName,
+      ServeCommon::getFormParamValue
+    );
+    //.delayElement(Duration.ofMillis(100));
     return (
       ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString)
     ).filter(ServeCommon::doFilter);
