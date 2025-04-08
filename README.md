@@ -7,11 +7,11 @@
 - I have put a lot of hours into learning this. There was a lot of trial and error which probably worked but due to how flaky getting data from subscribing can be, I did not think my pipeline was working correctly. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile.
 - POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as the JSON form of `List<Map<String,String>>` for easy processing.
 - The GET routes and starting non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
-- This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
+- This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Such as redirect port 80 to 443, and set Alt-Svc ma for h2 to 1 sec)
 - `delayElement` is used to meet the stable value delay requirement of Little's Law. Finding the sweet spot for this value was trial and error and there may be additional factors that could change the value. (i.e. I do not know if you will get the same results on your system that I do)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2.x), and Vert.x adds HTTP/3 support (hopefully Vert.x 5.x)
-- The project has satisfied the goal of supporting http/3 and identifying implemenation issues with browsers and servers; and simulating an end to end workflow by reading and writing data to a database
+- The project has satisfied the goal of simulating an enterprise application by supporting http/3 and identifying implemenation issues with browsers and servers; and simulating an end to end workflow by reading and writing data to a database
 
 ## Testing Notes
 
