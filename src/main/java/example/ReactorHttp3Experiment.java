@@ -2,32 +2,21 @@ package example;
 
 import example.FortuneDatabase;
 import example.ServeCommon;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.multipart.Attribute;
-import io.netty.handler.codec.http.multipart.FileUpload;
-import io.netty.handler.codec.http.multipart.HttpData;
+import io.netty.channel.ChannelOption;
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
-import reactor.netty.NettyOutbound;
 import reactor.netty.http.Http2SslContextSpec;
 import reactor.netty.http.Http3SslContextSpec;
 import reactor.netty.http.HttpProtocol;
 import reactor.netty.http.server.HttpServer;
-import reactor.netty.http.server.HttpServerRequest;
-import reactor.netty.http.server.HttpServerResponse;
 
 public final class ReactorHttp3Experiment {
 
   static final boolean SECURE = true;
   static final int PORT = 443;
-  static final boolean WIRETAP = false; // Network traffic does not need to be logged
+  static final boolean WIRETAP = false;
   static final boolean COMPRESS = true;
 
   public static void main(String[] args) throws Exception {
@@ -35,7 +24,7 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(false)
-      .compress(true); //      .route(routes -> routes.route(r -> true, // ServeHttp11::okResponseV11))
+      .compress(true);
 
     serverV11 = serverV11.protocol(HttpProtocol.HTTP11);
     DisposableServer disposableServerV11 = serverV11
@@ -49,8 +38,8 @@ public final class ReactorHttp3Experiment {
 
     HttpServer serverV2 = HttpServer.create()
       .port(PORT)
-      .wiretap(true)
-      .compress(COMPRESS); //      .route(routes -> routes.route(r -> true, ServeHttp2::okResponseV2))
+      .wiretap(false)
+      .compress(COMPRESS);
 
     // Deprecated: SslProvider.SslContextSpec.sslContext(SslProvider.ProtocolSslContextSpec)
     // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html
@@ -63,6 +52,7 @@ public final class ReactorHttp3Experiment {
         )
       )
     );
+
     serverV2 = serverV2.protocol(HttpProtocol.H2);
     DisposableServer disposableServerV2 = serverV2
       .route(routes ->
@@ -77,9 +67,6 @@ public final class ReactorHttp3Experiment {
       .port(PORT)
       .wiretap(false)
       .compress(COMPRESS);
-    //      .route(routes ->
-    //        routes.route(r -> true, ReactorHttp3Experiment::okResponseV3)
-    //      );
 
     serverV3 = serverV3.secure(spec ->
       spec.sslContext(

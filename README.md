@@ -1,25 +1,26 @@
 # reactor-http3-experiment
 
-## Status: Http/3 with H2 integration is working and has been tested with Firefox
+## Status: Http/3 with H2 integration is working and has been tested with Firefox. The pipeline is tuned to start individual curl instances with a .0025 second delay. I have also tested with curl -Z up to 16,000 requests.
 
 ## Summary
 
-- I have put a lot of hours into doing things incorrectly - a lot of this was related to how flaky getting data is after subscribing. I'm pretty sure that more than once I spent a very long time trying to figure out why I wasn't getting any data, and my attempts to redo it probably did work - but there was no output. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. To work around this I placed code (which would return a void) into a Filter. (Ideally I would have like a method that took Mono<T> as input and returned Monot<T> as output)
-- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as structured data of the deserialized JSON form of `List<Map<String,String>>` for easy processing.
-- The GET routes and starting non blocking servers are mostly derived from the examples below. The most significant thing is handling form POSTs which is original work (and a lot of research). This readme is original work. (I have included two implementations to process POSTs)
+- I have put a lot of hours into learning this. There was a lot of trial and error which probably worked but due to how flaky getting data from subscribing can be, I did not think my pipeline was working correctly. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile.
+- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as the JSON form of `List<Map<String,String>>` for easy processing.
+- The GET routes and starting non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Set ma for h2 to 1 sec)
+- `delayElement` is used to meet the stable value delay requirement of Little's Law. Finding the sweet spot for this value was trial and error and there may be additional factors that could change the value. (i.e. I do not know if you will get the same results on your system that I do)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
-- This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2), and Vert.x adds HTTP/3 support (hopefully Vert.x 5)
+- This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2.x), and Vert.x adds HTTP/3 support (hopefully Vert.x 5.x)
 - The project has satisfied the goal of supporting http/3 and identifying implemenation issues with browsers and servers; and simulating an end to end workflow by reading and writing data to a database
 
 ## Testing Notes
 
-1. HTTP/3 and POSTs are working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to get a working http/3 server with this library. The benifit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
+1. HTTP/3 and POSTs are working - There are other libraries which support Http/3; however, all of the underlying handlers had to be created. After spending weeks researching that implementation, it only took a very short time to get a working http/3 server with this library. The benefit of that experience is that I had to have a much better understanding of QUIC and HTTP/3.
 
 - Firefox has settings to enable http3 with self signed certs. (see below)
 - Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
 - For Chrome: Do not use "localhost" or "127.0.0.1" in your URL, but the actual hostname (Your software should not bind to localhost either)
-- Certificates must be x509v3, have an extened key usage of serverAuth (especially for macos), and have the hostname or wildcard in the SAN. Note that wildcards can only be for subdomains - so if you have a self signed certificate you cannot have `*.local` as a SAN.
+- Certificates must be x509v3, have an extened key usage of serverAuth, and have the hostname or wildcard in the SAN. Note that wildcards can only be for subdomains - so if you have a self signed certificate you cannot have `*.local` as a SAN.
 - QUIC is espeially sensitive to valid certificates, and will silently fail to negotiate - even in developer mode browsers do not report HTTP/3 connection attempts
 - Oddly Firefox requests favicon.ico with evey http3 request, but not with http2. (see below for how to prevent)
 
@@ -27,7 +28,7 @@
 
 - Chrome triggers an ssl error when requesting a page if a certificate is not trusted (such as the first visit to the site, using the refresh button, or when the Alt-Svc h2 ma expires) but not by following a link on the site; however, despite the server error, the correct content is returned via http/2 instead.
 
-3. Still do not know which QUIC token handler is in use (Reactor QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
+3. Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
 4. I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
 
 ## Basics of HTTP/3

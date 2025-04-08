@@ -1,35 +1,24 @@
 package example;
 
-// import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-// import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-// import example.FortuneDatabase;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
-// import java.io.File;
-// import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-// import java.util.ArrayList;
-// import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-// import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-// import reactor.netty.DisposableServer;
 import reactor.netty.NettyOutbound;
-// import reactor.netty.http.Http2SslContextSpec;
-// import reactor.netty.http.Http3SslContextSpec;
-// import reactor.netty.http.HttpProtocol;
-// import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
@@ -105,6 +94,7 @@ public class ServeCommon {
     return value;
   }
 
+  // This could be turned into a Jackson serialized object using a POJO like: public class Pojo { String Key; String Value;}
   public static <K, V> Mono<String> convertMonoMapToMonoStringGeneric(
     Mono<Map<K, V>> monoMap
   ) {
@@ -155,15 +145,12 @@ public class ServeCommon {
 
   // Convert receive ByteBufMono to StringMono
   public static Mono<String> getMonoString(HttpServerRequest request) {
-    Mono<String> monoString = request
+    return request
       .receive()
       .aggregate()
       .retain()
       .asString()
-      .delayElement(Duration.ofMillis(50))
       .defaultIfEmpty("\"\"=\"\"");
-    //.delayElement(Duration.ofMillis(100)); // Uses "parallel" scheduler. Delay notification that stream is ready to be consumed (unless it is empty)
-    return monoString;
   }
 
   // Wrap request to json conversion
@@ -175,13 +162,21 @@ public class ServeCommon {
       ServeCommon::getHttpDataName,
       ServeCommon::getHttpDataValue
     );
-    //.delayElement(Duration.ofMillis(100));
-    // Collect all of the map entries into a single string
-    return ServeCommon.convertMonoMapToMonoStringGeneric(
-      monoMapStringHttpData
-    ).filter(ServeCommon::doFilter);
+    // 'delayElement' Delays the time notification that the stream is ready to be consumed (unless it is empty). This acts to satisfy Little's Law which requires a constant rate.
+    // Understanding this as a queue also means that it can be starved if the delay is even a little to high or overwhelemed if the delay is even a little to low.
+    return ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringHttpData)
+      // 140
+      .delayElement(Duration.ofMillis(100))
+      .filter(ServeCommon::doFilter2);
+    //.flatMap(ServeCommon::doFilter);
   }
 
+  // .zipWith(Flux.interval(Duration.of(1, ChronoUnit.SECONDS)))
+  // Since we know it can't do more than 100 req/sec, we could
+  // throttle each request with a 100 ms delay
+  // although if the issue is the amount of stuff in a pipeline
+  // then this will just make the problem worse
+  //
   public static String responseText() {
     return (
       "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
@@ -192,16 +187,42 @@ public class ServeCommon {
 
   // This can be called from then()
   public static void updateDBWithString(String value) {
-    System.out.println("Value:" + value);
+    // System.out.println("Value:" + value);
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
       FortuneDatabase.addFortune(value);
     } else {
-      System.out.println("No value");
+      // System.out.println("No value");
     }
   }
 
+  // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
   // Only process first parameter. JDBC Code in lambda blocks so need to move this to a seperate worker thread with callable - although H2 is in memory so I am not really sure if the overhead is worth it.
-  public static boolean doFilter(String result) {
+  public static Mono<String> doFilter(String result) {
+    System.out.println("JSON value: " + result);
+    String key = new String();
+    String value = new String();
+    try {
+      List<Map<String, String>> pojo = new ObjectMapper()
+        .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+      Map<String, String> map = pojo.iterator().next();
+      key = map.get("Key");
+      value = map.get("Value");
+    } catch (Exception e) {
+      e.printStackTrace();
+      if (result.length() > 0) {
+        String[] ss = result.split(",");
+        String[] sc = ss[0].split(":");
+        key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+        value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+      }
+    }
+
+    updateDBWithString(value);
+
+    return Mono.just(result);
+  }
+
+  public static boolean doFilter2(String result) {
     System.out.println("JSON value: " + result);
     String key = new String();
     String value = new String();
@@ -256,7 +277,7 @@ public class ServeCommon {
     //.delayElement(Duration.ofMillis(100));
     return (
       ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString)
-    ).filter(ServeCommon::doFilter);
+    ).flatMap(ServeCommon::doFilter);
   }
 
   // Functions for maps
@@ -313,20 +334,31 @@ public class ServeCommon {
   public static Flux<String> stringToFlux(String str) {
     String cleanString = str
       .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+      .replaceAll("[&][a-zA-Z0-9*-_.+%]+[&]", "&")
       .replaceAll("[&]+", "&")
       .replaceAll("[=][a-zA-Z0-9*-_.+%]+[=]", "=")
       .replaceAll("[=]+", "=")
-      .replaceAll("^[=]+", "")
-      .replaceAll("^[&]+", "")
-      .replaceAll("[&]+$", "")
-      .replaceAll("[&][=]", "&null=");
-    // .replaceAll("[&][a-zA-Z0-9*-_.+%]+$", "&null=");
-    //.replaceAll("^[a-zA-Z0-9*-_.+%]+$", "null=");
-    System.out.println("Post param: " + cleanString);
+      .replaceAll("^[=]", "null=")
+      .replaceAll("^[&]", "")
+      .replaceAll("[&][=]", "&null=")
+      .replaceAll("[&]$", "");
     if (cleanString.contains("&")) {
-      return Flux.fromArray(cleanString.split("&"));
+      String[] stringArray = cleanString.split("&");
+      List<String> list = new ArrayList<String>();
+      for (int i = 0; i < stringArray.length; i++) {
+        if (stringArray[i].contains("=")) {
+          list.add(stringArray[i]);
+        } else {
+          list.add(stringArray[i] + "=");
+        }
+      }
+      return Flux.fromIterable(list);
     } else {
-      return Flux.just(cleanString);
+      if (cleanString.contains("=")) {
+        return Flux.just(cleanString);
+      } else {
+        return Flux.just(cleanString + "=");
+      }
     }
   }
 }
