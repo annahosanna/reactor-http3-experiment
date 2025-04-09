@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -150,7 +149,7 @@ public class ServeCommon {
       .aggregate()
       .retain()
       .asString()
-      .defaultIfEmpty("\"\"=\"\"");
+      .filter(str -> str.length() > 0);
   }
 
   // Wrap request to json conversion
@@ -338,9 +337,9 @@ public class ServeCommon {
       .replaceAll("[&]+", "&")
       .replaceAll("[=][a-zA-Z0-9*-_.+%]+[=]", "=")
       .replaceAll("[=]+", "=")
-      .replaceAll("^[=]", "null=")
-      .replaceAll("^[&]", "")
       .replaceAll("[&][=]", "&null=")
+      .replaceAll("^[&]", "")
+      .replaceAll("^[=]", "null=")
       .replaceAll("[&]$", "");
     if (cleanString.contains("&")) {
       String[] stringArray = cleanString.split("&");

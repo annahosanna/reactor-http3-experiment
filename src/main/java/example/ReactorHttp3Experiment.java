@@ -24,9 +24,11 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(false)
-      .compress(true);
+      .compress(true)
+      .protocol(HttpProtocol.HTTP11);
 
-    serverV11 = serverV11.protocol(HttpProtocol.HTTP11);
+    serverV11.warmup();
+
     DisposableServer disposableServerV11 = serverV11
       .route(routes ->
         routes
@@ -39,21 +41,19 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV2 = HttpServer.create()
       .port(PORT)
       .wiretap(false)
-      .compress(COMPRESS);
-
-    // Deprecated: SslProvider.SslContextSpec.sslContext(SslProvider.ProtocolSslContextSpec)
-    // Instead the replacements are: https://projectreactor.io/docs/netty/release/api/reactor/netty/tcp/SslProvider.GenericSslContextSpec.html
-    // Use: reactor.netty.http.Http2SslContextSpec
-    serverV2 = serverV2.secure(spec ->
-      spec.sslContext(
-        Http2SslContextSpec.forServer(
-          new File("certs.pem"),
-          new File("key.pem")
+      .compress(COMPRESS)
+      .protocol(HttpProtocol.H2)
+      .secure(spec ->
+        spec.sslContext(
+          Http2SslContextSpec.forServer(
+            new File("certs.pem"),
+            new File("key.pem")
+          )
         )
-      )
-    );
+      );
 
-    serverV2 = serverV2.protocol(HttpProtocol.H2);
+    serverV2.warmup();
+
     DisposableServer disposableServerV2 = serverV2
       .route(routes ->
         routes
@@ -66,20 +66,16 @@ public final class ReactorHttp3Experiment {
     HttpServer serverV3 = HttpServer.create()
       .port(PORT)
       .wiretap(false)
-      .compress(COMPRESS);
-
-    serverV3 = serverV3.secure(spec ->
-      spec.sslContext(
-        Http3SslContextSpec.forServer(
-          new File("key.pem"),
-          null,
-          new File("certs.pem")
+      .compress(COMPRESS)
+      .secure(spec ->
+        spec.sslContext(
+          Http3SslContextSpec.forServer(
+            new File("key.pem"),
+            null,
+            new File("certs.pem")
+          )
         )
       )
-    );
-
-    // QUIC does not know what the idletimeout etc should be, since it doesn't know HTTP3 will be the upper layer. Those need to be adjusted here
-    serverV3 = serverV3
       .protocol(HttpProtocol.HTTP3)
       .http3Settings(spec ->
         spec
@@ -89,6 +85,9 @@ public final class ReactorHttp3Experiment {
           .maxStreamDataBidirectionalRemote(1000000)
           .maxStreamsBidirectional(100)
       );
+
+    serverV3.warmup();
+
     DisposableServer disposableServerV3 = serverV3
       .route(routes ->
         routes

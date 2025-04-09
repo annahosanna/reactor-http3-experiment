@@ -1,12 +1,20 @@
 # reactor-http3-experiment
 
-## Status: Http/3 with H2 integration is working and has been tested with Firefox. The pipeline is tuned to start individual curl instances with a .0025 second delay. I have also tested with curl -Z up to 16,000 requests.
+## Status: Http/3 with H2 integration is working and has been tested with Firefox.
+
+## Test POST'ing a new fortune to the database with an M2 (Timing and scalability are system specific)
+
+### The pipeline is tuned to service multiple connections which start at least .0025 seconds apart. (Data loss will occur if there are more than about 400 new connections per second)
+
+### 500,000 parallel requests can be processed on a single connection in 38 seconds.
+
+### 5,000,000 parallel requests were processed in 175 seconds with 10 connections.
 
 ## Summary
 
 - I have put a lot of hours into learning this. There was a lot of trial and error which probably worked but due to how flaky getting data from subscribing can be, I did not think my pipeline was working correctly. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile.
-- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into `Mono<String>` as the JSON form of `List<Map<String,String>>` for easy processing.
-- The GET routes and starting non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
+- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into a `Mono<String>` in the JSON form of `List<Map<String,String>>` for easy processing.
+- The GET routes and non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Such as redirect port 80 to 443, and set Alt-Svc ma for h2 to 1 sec)
 - `delayElement` is used to meet the stable value delay requirement of Little's Law. Finding the sweet spot for this value was trial and error and there may be additional factors that could change the value. (i.e. I do not know if you will get the same results on your system that I do)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
