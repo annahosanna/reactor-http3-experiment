@@ -6,9 +6,9 @@
 
 ### The pipeline is tuned to service multiple connections which start at least .0025 seconds apart. (Data loss will occur if there are more than about 400 new connections per second)
 
-### 500,000 parallel requests can be processed on a single connection in 38 seconds.
+### 500,000 parallel requests can be processed on a single connection in 18 seconds.
 
-### 5,000,000 parallel requests were processed in 175 seconds with 10 connections.
+### 5,000,000 parallel requests were processed in 175 seconds with 10 connections. (note that all 10 finish at about the same time)
 
 ## Summary
 
