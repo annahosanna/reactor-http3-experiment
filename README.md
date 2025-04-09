@@ -4,11 +4,11 @@
 
 ## Test POST'ing a new fortune to the database with an M2 (Timing and scalability are system specific)
 
-### The pipeline is tuned to service multiple connections which start at least .0025 seconds apart. (Data loss will occur if there are more than about 400 new connections per second)
+### I have not load tested opening more than about 200 connections per second.
 
 ### 500,000 parallel requests can be processed on a single connection in 18 seconds.
 
-### 5,000,000 parallel requests were processed in 175 seconds with 10 connections. (note that all 10 finish at about the same time)
+### 5,000,000 parallel requests were processed in 175 seconds with 10 connections. Note that all 10 finished at about the same time, so the service rate was constant for the system. (and does not scale by the number of connections)
 
 ## Summary
 
@@ -16,7 +16,6 @@
 - POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into a `Mono<String>` in the JSON form of `List<Map<String,String>>` for easy processing.
 - The GET routes and non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Such as redirect port 80 to 443, and set Alt-Svc ma for h2 to 1 sec)
-- `delayElement` is used to meet the stable value delay requirement of Little's Law. Finding the sweet spot for this value was trial and error and there may be additional factors that could change the value. (i.e. I do not know if you will get the same results on your system that I do)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
 - This project is only temporary, and I will switch to using Vert.x when Netty supports HTTP/3 (hopefully release 4.2.x), and Vert.x adds HTTP/3 support (hopefully Vert.x 5.x)
 - The project has satisfied the goal of simulating an enterprise application by supporting http/3 and identifying implemenation issues with browsers and servers; and simulating an end to end workflow by reading and writing data to a database
@@ -38,6 +37,7 @@
 
 3. Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
 4. I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
+5. Errors and Warnings: I was receiving various SSL negotiation and aggregate LEAK errors. Once I filtered that asString() was returning a value the errors went away. Checking for nulls seems pretty obvious; however, some of the methods have arguments that assume there is data to act on - so stopping the pipeline early is important.
 
 ## Basics of HTTP/3
 

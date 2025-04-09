@@ -9,7 +9,6 @@ import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -155,27 +154,23 @@ public class ServeCommon {
   // Wrap request to json conversion
   public static Mono<String> getMonoStringFromFlux(HttpServerRequest request) {
     // Built in function to convert a Mono<ByteBuf> into an HttpData object for each parameter (Flux)
-    Flux<HttpData> fluxHttpData = request.receiveForm();
+    Flux<HttpData> fluxHttpData = request
+      .receiveForm()
+      .filter(hd -> {
+        return hd != null;
+      });
     // This applies a key function, and a value (defaults to the flux object). In this case a value function has been added as well to return a String rather than HttpData
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData.collectMap(
       ServeCommon::getHttpDataName,
       ServeCommon::getHttpDataValue
     );
-    // 'delayElement' Delays the time notification that the stream is ready to be consumed (unless it is empty). This acts to satisfy Little's Law which requires a constant rate.
-    // Understanding this as a queue also means that it can be starved if the delay is even a little to high or overwhelemed if the delay is even a little to low.
-    return ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringHttpData)
-      // 140
-      .delayElement(Duration.ofMillis(100))
-      .filter(ServeCommon::doFilter2);
-    //.flatMap(ServeCommon::doFilter);
+    return ServeCommon.convertMonoMapToMonoStringGeneric(
+      monoMapStringHttpData
+    ).flatMap(ServeCommon::doFilter); // .filter(ServeCommon::doFilter2);
   }
 
-  // .zipWith(Flux.interval(Duration.of(1, ChronoUnit.SECONDS)))
-  // Since we know it can't do more than 100 req/sec, we could
-  // throttle each request with a 100 ms delay
-  // although if the issue is the amount of stuff in a pipeline
-  // then this will just make the problem worse
-  //
+  // .zipWith(Flux.interval()))
+  // Can be used to create a delay
   public static String responseText() {
     return (
       "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
@@ -186,7 +181,6 @@ public class ServeCommon {
 
   // This can be called from then()
   public static void updateDBWithString(String value) {
-    // System.out.println("Value:" + value);
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
       FortuneDatabase.addFortune(value);
     } else {
@@ -273,10 +267,10 @@ public class ServeCommon {
       ServeCommon::getFormParamName,
       ServeCommon::getFormParamValue
     );
-    //.delayElement(Duration.ofMillis(100));
     return (
       ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString)
     ).flatMap(ServeCommon::doFilter);
+    // .filter(ServeCommon::doFilter2);
   }
 
   // Functions for maps
@@ -341,23 +335,23 @@ public class ServeCommon {
       .replaceAll("^[&]", "")
       .replaceAll("^[=]", "null=")
       .replaceAll("[&]$", "");
+    List<String> list = new ArrayList<String>();
     if (cleanString.contains("&")) {
       String[] stringArray = cleanString.split("&");
-      List<String> list = new ArrayList<String>();
       for (int i = 0; i < stringArray.length; i++) {
-        if (stringArray[i].contains("=")) {
-          list.add(stringArray[i]);
-        } else {
-          list.add(stringArray[i] + "=");
-        }
+        list.add(adjustEqualSign(stringArray[i]));
       }
-      return Flux.fromIterable(list);
     } else {
-      if (cleanString.contains("=")) {
-        return Flux.just(cleanString);
-      } else {
-        return Flux.just(cleanString + "=");
-      }
+      list.add(adjustEqualSign(cleanString));
+    }
+    return Flux.fromIterable(list);
+  }
+
+  public static String adjustEqualSign(String str) {
+    if (str.contains("=")) {
+      return str;
+    } else {
+      return str.concat("=");
     }
   }
 }
