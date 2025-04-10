@@ -157,7 +157,7 @@ public class ServeCommon {
     Flux<HttpData> fluxHttpData = request
       .receiveForm()
       .filter(hd -> {
-        return hd != null;
+        return !Objects.isNull(hd);
       });
     // This applies a key function, and a value (defaults to the flux object). In this case a value function has been added as well to return a String rather than HttpData
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData.collectMap(
@@ -169,8 +169,7 @@ public class ServeCommon {
     ).flatMap(ServeCommon::doFilter); // .filter(ServeCommon::doFilter2);
   }
 
-  // .zipWith(Flux.interval()))
-  // Can be used to create a delay
+  // Random note to self .zipWith(Flux.interval())) can be used to create a delay
   public static String responseText() {
     return (
       "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +

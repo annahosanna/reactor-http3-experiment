@@ -1,7 +1,7 @@
 #!/bin/bash
 
-for i in {1..10}
+for i in {1..4}
 do
-sleep .001
+sleep .01
 ./test3.sh &
 done
