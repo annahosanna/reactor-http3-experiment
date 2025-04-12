@@ -305,7 +305,7 @@ public class ServeCommon {
     } else {
       String valueValue = keyValuePair
         .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-        .replaceAll("^[a-zA-Z0-9*-_.+&%]+[=]", "");
+        .replaceAll("^[a-zA-Z0-9*-_.+&%]*[=]", "");
       if (valueValue.length() == 0) {
         return null;
       } else {
@@ -330,27 +330,25 @@ public class ServeCommon {
       .replaceAll("[&]+", "&")
       .replaceAll("[=][a-zA-Z0-9*-_.+%]+[=]", "=")
       .replaceAll("[=]+", "=")
-      .replaceAll("[&][=]", "&null=")
+      // .replaceAll("[&][=]", "&null=")
       .replaceAll("^[&]", "")
-      .replaceAll("^[=]", "null=")
+      // .replaceAll("^[=]", "null=")
       .replaceAll("[&]$", "");
     List<String> list = new ArrayList<String>();
     if (cleanString.contains("&")) {
       String[] stringArray = cleanString.split("&");
       for (int i = 0; i < stringArray.length; i++) {
-        list.add(adjustEqualSign(stringArray[i]));
+        adjustEqualSign(list, stringArray[i]);
       }
     } else {
-      list.add(adjustEqualSign(cleanString));
+      adjustEqualSign(list, cleanString);
     }
     return Flux.fromIterable(list);
   }
 
-  public static String adjustEqualSign(String str) {
-    if (str.contains("=")) {
-      return str;
-    } else {
-      return str.concat("=");
+  public static void adjustEqualSign(List<String> list, String str) {
+    if ((str.contains("=")) && (!str.startsWith("=")) && (!str.isBlank())) {
+      list.add(str);
     }
   }
 }

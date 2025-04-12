@@ -4,9 +4,6 @@ import java.sql.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import org.h2.Driver;
-import org.h2.jdbcx.JdbcConnectionPool;
-
-// com.h2database:h2:2.1.214
 
 public class FortuneDatabase {
 
@@ -41,67 +38,66 @@ public class FortuneDatabase {
 
   public static String getFortune() {
     String fortune = new String();
-    String dbUrl = "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
-    
+    String dbUrl =
+      "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+
     try {
-    	// Hope this does not rely on scope
-    Class.forName("org.h2.Driver");
-    try (Connection conn = DriverManager.getConnection(dbUrl,"sa","")) {
-      PreparedStatement stmt = conn.prepareStatement(
-        "SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1"
-      );
-      ResultSet rs = stmt.executeQuery();
-      fortune = rs.next() ? rs.getString("text") : "No fortunes available";
+      // Hope this does not rely on scope
+      Class.forName("org.h2.Driver");
+      try (Connection conn = DriverManager.getConnection(dbUrl, "sa", "")) {
+        PreparedStatement stmt = conn.prepareStatement(
+          "SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1"
+        );
+        ResultSet rs = stmt.executeQuery();
+        fortune = rs.next() ? rs.getString("text") : "No fortunes available";
+      } catch (Exception e) {
+        fortune = "";
+        e.printStackTrace();
+      }
     } catch (Exception e) {
-      fortune = "";
       e.printStackTrace();
+      fortune = "";
     }
-    } catch (Exception e){
-    	e.printStackTrace();
-    	fortune = "";
-    }    
 
     return fortune;
   }
 
   public static void addFortune(String fortune) {
-    String dbUrl = "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
-    String trimmedFortune = new String(truncateString(fortune,254));
+    String dbUrl =
+      "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+    String trimmedFortune = new String(truncateString(fortune, 254));
     try {
-    	// Hope this does not rely on scope
-    Class.forName("org.h2.Driver");
-    try (Connection conn = DriverManager.getConnection(dbUrl,"sa","")) {
-      conn
-        .createStatement()
-        .execute(
-          "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, text VARCHAR(255))"
-        );
-      String sql = "INSERT INTO fortunes (text) VALUES (?)";
-      try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-        stmt.setString(1, trimmedFortune);
-        stmt.executeUpdate();
+      // Hope this does not rely on scope
+      Class.forName("org.h2.Driver");
+      try (Connection conn = DriverManager.getConnection(dbUrl, "sa", "")) {
+        conn
+          .createStatement()
+          .execute(
+            "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, text VARCHAR(255))"
+          );
+        String sql = "INSERT INTO fortunes (text) VALUES (?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+          stmt.setString(1, trimmedFortune);
+          stmt.executeUpdate();
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       } catch (Exception e) {
         e.printStackTrace();
       }
     } catch (Exception e) {
       e.printStackTrace();
     }
-
-    } catch (Exception e){
-    	e.printStackTrace();
-    }    
-
-    
-    }
-  public static String truncateString(String text, int maxLength) {
-      if (text == null) {
-          return null;
-      }
-      if (text.length() <= maxLength) {
-          return text;
-      } else {
-          return text.substring(0, maxLength);
-      }
   }
 
+  public static String truncateString(String text, int maxLength) {
+    if (text == null) {
+      return null;
+    }
+    if (text.length() <= maxLength) {
+      return text;
+    } else {
+      return text.substring(0, maxLength);
+    }
+  }
 }
