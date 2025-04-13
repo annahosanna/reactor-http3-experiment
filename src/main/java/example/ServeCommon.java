@@ -193,24 +193,25 @@ public class ServeCommon {
     System.out.println("JSON value: " + result);
     String key = new String();
     String value = new String();
-    try {
-      List<Map<String, String>> pojo = new ObjectMapper()
-        .readValue(result, new TypeReference<List<Map<String, String>>>() {});
-      Map<String, String> map = pojo.iterator().next();
-      key = map.get("Key");
-      value = map.get("Value");
-    } catch (Exception e) {
-      e.printStackTrace();
-      if (result.length() > 0) {
-        String[] ss = result.split(",");
-        String[] sc = ss[0].split(":");
-        key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-        value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+    if (result.length() > 2) {
+      try {
+        List<Map<String, String>> pojo = new ObjectMapper()
+          .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+        Map<String, String> map = pojo.iterator().next();
+        key = map.get("Key");
+        value = map.get("Value");
+      } catch (Exception e) {
+        e.printStackTrace();
+        if (result.length() > 0) {
+          String[] ss = result.split(",");
+          String[] sc = ss[0].split(":");
+          key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+          value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+        }
       }
+
+      updateDBWithString(value);
     }
-
-    updateDBWithString(value);
-
     return Mono.just(result);
   }
 
@@ -326,13 +327,12 @@ public class ServeCommon {
   public static Flux<String> stringToFlux(String str) {
     String cleanString = str
       .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-      .replaceAll("[&][a-zA-Z0-9*-_.+%]+[&]", "&")
+      .replaceAll("[&][^=]+[&]", "&")
+      .replaceAll("[&]+[=]+", "&")
+      .replaceAll("[^&=]*[=]+[^&=]*[=]+", "&")
       .replaceAll("[&]+", "&")
-      .replaceAll("[=][a-zA-Z0-9*-_.+%]+[=]", "=")
       .replaceAll("[=]+", "=")
-      // .replaceAll("[&][=]", "&null=")
       .replaceAll("^[&]", "")
-      // .replaceAll("^[=]", "null=")
       .replaceAll("[&]$", "");
     List<String> list = new ArrayList<String>();
     if (cleanString.contains("&")) {
@@ -343,7 +343,12 @@ public class ServeCommon {
     } else {
       adjustEqualSign(list, cleanString);
     }
-    return Flux.fromIterable(list);
+
+    if (list.toArray().length == 0) {
+      return Flux.just("");
+    } else {
+      return Flux.fromIterable(list);
+    }
   }
 
   public static void adjustEqualSign(List<String> list, String str) {
