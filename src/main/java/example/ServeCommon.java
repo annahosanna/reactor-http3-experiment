@@ -117,7 +117,7 @@ public class ServeCommon {
                 key = mapper.writeValueAsString((String) (entry.getKey()));
               }
               if (Objects.isNull(entry.getValue())) {
-                value = "null";
+                value = mapper.writeValueAsString(null);
               } else {
                 value = mapper.writeValueAsString((String) (entry.getValue()));
               }
@@ -285,8 +285,11 @@ public class ServeCommon {
       return "null";
     } else {
       String keyValue = keyValuePair
-        .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-        .replaceAll("[=][a-zA-Z0-9*-_.+&%]*$", "");
+        // Already done
+        // .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+        // Simpler way to say this
+        // .replaceAll("[=][a-zA-Z0-9*-_.+&%]*$", "");
+        .replaceAll("[=][^=]*$", "");
       if (keyValue.length() == 0) {
         return "null";
       } else {
@@ -299,14 +302,19 @@ public class ServeCommon {
     }
   }
 
+  // " is just a char, not a string terminator
   public static String getFormParamValue(String param) {
     String keyValuePair = param;
     if (param.length() - param.replace("=", "").length() != 1) {
       return null;
     } else {
       String valueValue = keyValuePair
-        .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-        .replaceAll("^[a-zA-Z0-9*-_.+&%]*[=]", "");
+        // Already done
+        // .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+        // Simpler way to say this
+        // .replaceAll("^[a-zA-Z0-9*-_.+&%]*[=]", "");
+        .replaceAll("^[^=]*[=]", "");
+      System.out.println(valueValue);
       if (valueValue.length() == 0) {
         return null;
       } else {
@@ -324,9 +332,11 @@ public class ServeCommon {
     return keyPairs;
   }
 
+  // The bad thing about a POST is that there is that all values are considered strings. Whereas with JSON there are datatypes
   public static Flux<String> stringToFlux(String str) {
+    System.out.println(str);
     String cleanString = str
-      .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
+      .replaceAll("[^a-zA-Z0-9*-_.+&=%\"]+", "")
       .replaceAll("[&][^=]+[&]", "&")
       .replaceAll("[&]+[=]+", "&")
       .replaceAll("[^&=]*[=]+[^&=]*[=]+", "&")
