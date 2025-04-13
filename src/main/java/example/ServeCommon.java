@@ -284,12 +284,7 @@ public class ServeCommon {
       // bad
       return "null";
     } else {
-      String keyValue = keyValuePair
-        // Already done
-        // .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-        // Simpler way to say this
-        // .replaceAll("[=][a-zA-Z0-9*-_.+&%]*$", "");
-        .replaceAll("[=][^=]*$", "");
+      String keyValue = keyValuePair.replaceAll("[=][^=]*$", "");
       if (keyValue.length() == 0) {
         return "null";
       } else {
@@ -308,13 +303,7 @@ public class ServeCommon {
     if (param.length() - param.replace("=", "").length() != 1) {
       return null;
     } else {
-      String valueValue = keyValuePair
-        // Already done
-        // .replaceAll("[^a-zA-Z0-9*-_.+&=%]+", "")
-        // Simpler way to say this
-        // .replaceAll("^[a-zA-Z0-9*-_.+&%]*[=]", "");
-        .replaceAll("^[^=]*[=]", "");
-      System.out.println(valueValue);
+      String valueValue = keyValuePair.replaceAll("^[^=]*[=]", "");
       if (valueValue.length() == 0) {
         return null;
       } else {
@@ -334,7 +323,6 @@ public class ServeCommon {
 
   // The bad thing about a POST is that there is that all values are considered strings. Whereas with JSON there are datatypes
   public static Flux<String> stringToFlux(String str) {
-    System.out.println(str);
     String cleanString = str
       .replaceAll("[^a-zA-Z0-9*-_.+&=%\"]+", "")
       .replaceAll("[&][^=]+[&]", "&")
