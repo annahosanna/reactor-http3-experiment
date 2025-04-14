@@ -4,9 +4,9 @@
 
 ## Performance test POST'ing a new fortune to the database with a MacBook Air M2 (Timing and scalability are system specific)
 
-### I have not load tested opening more than about 200 connections per second.
+### I have not load tested opening more than about 500 connections per second.
 
-### 500,000 parallel requests can be processed on a single connection in 18 seconds. (More connections does not increase the service rate) (The built in `receiveForm()` method which handles multipart forms and is overkill for my needs takes four times as long)
+### 500,000 parallel requests can be processed on a single connection in 20 seconds. (More connections does not increase the service rate) (The built in `receiveForm()` method which handles multipart forms and is overkill for my needs takes four times as long)
 
 ### Testing note: The number of connections should not exceed the number of active cores. MacOS uses different cores depending on if it is plugged in and other factors. Other operating systems have similar factors such as file handles (nfiles), threads, and virtual memory. The jvm has settings which affect garbage collection and heap size. None of these have been taken into account.
 
