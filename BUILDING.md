@@ -5,7 +5,7 @@
 - Certificates
 
 1. Either obtain an x509 v3 certificate or create a self signed certificate.
-2. The SAN needs to include the hostname (or CNAME) of this server/workstation
+2. The SAN needs to include the hostname of this server/workstation
 3. The key should be named `key.pem` and the x509 certificate chain should be named `certs.pem`
 
 - Build the server:

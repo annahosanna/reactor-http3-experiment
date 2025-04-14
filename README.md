@@ -6,7 +6,7 @@
 
 ### I have not load tested opening more than about 500 connections per second.
 
-### 500,000 parallel requests can be processed on a single connection in 20 seconds. (More connections does not increase the service rate) (The built in `receiveForm()` method which handles multipart forms and is overkill for my needs takes four times as long)
+### 500,000 parallel requests can be processed on a single connection in 20 seconds. (More connections does not increase the service rate) (The built in `receiveForm()` method, which handles multipart forms, takes four times as long)
 
 ### Testing note: MacOS uses different cores depending on if it is plugged in and other factors. Other operating systems have similar factors such as file handles (nfiles), threads, and virtual memory. The jvm has settings which affect garbage collection and heap size. None of these have been taken into account.
 
@@ -28,9 +28,9 @@
 - QUIC is espeially sensitive to valid certificates, and will silently fail to negotiate - even in developer mode, browsers do not report HTTP/3 connection attempts
 - Oddly Firefox requests favicon.ico with every http3 request, but not with http2. (see below for how to prevent)
 
-2.  Chrome triggers an ssl error: Server error `javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown` when ByteToMessageDecoder tries to decode the ssl stream. When requesting a page if a certificate is not trusted (such as the first visit to the site, using the refresh button, or when the Alt-Svc h2 ma expires) but not by following a link on the site; however, despite the server error, the correct content is returned via http/2 instead.
-3.  Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
-4.  I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
+1.  Chrome triggers an ssl error: Server error `javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown` when ByteToMessageDecoder tries to decode the ssl stream. When requesting a page if a certificate is not trusted (such as the first visit to the site, using the refresh button, or when the Alt-Svc h2 ma expires) but not by following a link on the site; however, despite the server error, the correct content is returned via http/2 instead.
+2.  Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
+3.  I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
 
 ## Basics of HTTP/3
 
