@@ -154,11 +154,7 @@ public class ServeCommon {
   // Wrap request to json conversion
   public static Mono<String> getMonoStringFromFlux(HttpServerRequest request) {
     // Built in function to convert a Mono<ByteBuf> into an HttpData object for each parameter (Flux)
-    Flux<HttpData> fluxHttpData = request
-      .receiveForm()
-      .filter(hd -> {
-        return !Objects.isNull(hd);
-      });
+    Flux<HttpData> fluxHttpData = request.receiveForm();
     // This applies a key function, and a value (defaults to the flux object). In this case a value function has been added as well to return a String rather than HttpData
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData.collectMap(
       ServeCommon::getHttpDataName,

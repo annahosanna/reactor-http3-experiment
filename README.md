@@ -2,18 +2,18 @@
 
 ## Status: Http/3 with H2 integration is working and has been tested with Firefox.
 
-## Performance test POST'ing a new fortune to the database with an M2 (Timing and scalability are system specific)
+## Performance test POST'ing a new fortune to the database with a MacBook Air M2 (Timing and scalability are system specific)
 
 ### I have not load tested opening more than about 200 connections per second.
 
-### 500,000 parallel requests can be processed on a single connection in 18 seconds. (More connections does not increase the service rate)
+### 500,000 parallel requests can be processed on a single connection in 18 seconds. (More connections does not increase the service rate) (The built in `receiveForm()` method which handles multipart forms and is overkill for my needs takes four times as long)
 
 ### Testing note: The number of connections should not exceed the number of active cores. MacOS uses different cores depending on if it is plugged in and other factors. Other operating systems have similar factors such as file handles (nfiles), threads, and virtual memory. The jvm has settings which affect garbage collection and heap size. None of these have been taken into account.
 
 ## Summary
 
-- I have put a lot of hours into learning this. There was a lot of trial and error which probably worked but due to how flaky getting data from subscribing can be, I did not think my pipeline was working correctly. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile.
-- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded, then recombine them into a `Mono<String>` in the JSON form of `List<Map<String,String>>` for easy processing (A list of key/value pairs).
+- I have put a lot of hours into learning this. There was a lot of trial and error which probably worked but due to how flaky getting data from subscribing can be, I did not think my pipeline was working correctly. Furthermore working with POSTs was a pain and I ended up writing my own decoder. Finally it seemed like the pipeline was very fragile. (Stops working with a slight change or errors reported in one part of the pipeline are actually realted to a completely different part of the pipeline)
+- POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded and validated, then recombine them into a `Mono<String>` in the JSON form of `List<Map<String,String>>` for easy processing (A list of key/value pairs).
 - The GET routes and non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Such as redirect port 80 to 443, and set Alt-Svc ma for h2 to 1 sec)
 - You can test the latency yourself, but Http/3 appeared to be faster. Perhaps sometime I can set up Jmeter for accurate results.
@@ -34,7 +34,7 @@
 2.  Chrome triggers an ssl error: Server error `javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown` when ByteToMessageDecoder tries to decode the ssl stream. When requesting a page if a certificate is not trusted (such as the first visit to the site, using the refresh button, or when the Alt-Svc h2 ma expires) but not by following a link on the site; however, despite the server error, the correct content is returned via http/2 instead.
 3.  Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
 4.  I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
-5.  Errors and Warnings: I was receiving various SSL negotiation and aggregate LEAK errors. Once I filtered asString() was returning a value the errors went away. Checking for nulls seems pretty obvious; however, some of the methods have arguments that assume there is data to act on - so stopping the pipeline early is important.
+5.  Errors and Warnings: I was receiving various SSL negotiation and aggregate LEAK errors. Once the pipeline was modified to filter asString() was returning a value the errors went away. (which has nothing to do with aggregate btw) Checking for nulls seems pretty obvious; however, some of the methods have arguments that assume a known type of data is being passed to a lambda, so handling this condition is important. (This is actually a good argument for always using generics and checking instance type)
 
 ## Basics of HTTP/3
 
