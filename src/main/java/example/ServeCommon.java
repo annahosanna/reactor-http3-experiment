@@ -339,7 +339,7 @@ public class ServeCommon {
     }
 
     if (list.toArray().length == 0) {
-      return Flux.just("");
+      return Flux.empty();
     } else {
       return Flux.fromIterable(list);
     }

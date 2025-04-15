@@ -7,11 +7,6 @@ import org.h2.Driver;
 
 public class FortuneDatabase {
 
-  // private final JdbcConnectionPool pool;
-
-  // ds = new JdbcDataSource();
-  // ds.setURL("jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1");
-
   public FortuneDatabase() {
     initializeDatabase();
   }
