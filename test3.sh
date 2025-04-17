@@ -4,11 +4,8 @@ time1=$(date +%s)
 curl -K ./test3.cfg
 time2=$(date +%s)
 
-echo "Time taken to process 500,000 requests for a single connection:"
-awk "BEGIN { print ${time2} - ${time1} }"
+singleconnection=`awk "BEGIN { print ${time2} - ${time1} }"`
+rps=`awk "BEGIN { print 500000.0/(${time2} - ${time1}) }"`
+spr=`awk "BEGIN { print (${time2} - ${time1})/500000.0 }"`
 
-echo "Requests per second for a single connection:"
-awk "BEGIN { print 500000.0/(${time2} - ${time1}) }"
-
-echo "Seconds per request for a single connection:"
-awk "BEGIN { print (${time2} - ${time1})/500000.0 }"
+echo "Time to perform 5kk request on a single connection: ${singleconnection}. Requests per second: ${rps}. Seconds per request: ${spr}."
