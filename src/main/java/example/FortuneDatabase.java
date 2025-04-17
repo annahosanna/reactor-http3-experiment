@@ -3,7 +3,6 @@ package example;
 import java.sql.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import org.h2.Driver;
 
 public class FortuneDatabase {
 

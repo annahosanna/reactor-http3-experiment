@@ -1,15 +1,7 @@
 package example;
 
-import io.r2dbc.h2.H2Connection;
-import io.r2dbc.h2.H2ConnectionConfiguration;
-import io.r2dbc.h2.H2ConnectionConfiguration.Builder;
 import io.r2dbc.h2.H2ConnectionFactory;
-import io.r2dbc.h2.H2ConnectionOption;
 import io.r2dbc.h2.H2Result;
-import io.r2dbc.h2.H2Statement;
-import java.sql.*;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.util.List;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -93,7 +85,6 @@ public class FortuneDatabaseR2DBC {
   }
 
   public static void addFortune(String fortune) {
-    Mono<String> fortuneMono = null;
     H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
       io.r2dbc.h2.H2ConnectionConfiguration.builder()
         .url("mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;")
@@ -105,7 +96,6 @@ public class FortuneDatabaseR2DBC {
     String trimmedFortune = new String(truncateString(fortune, 254));
     try {
       Class.forName("org.h2.Driver");
-      Mono<H2Connection> h2ConnectionMono = connectionFactory.create();
 
       Mono<Void> insertFortune = Mono.from(connectionFactory.create()).flatMap(
         connection -> {
