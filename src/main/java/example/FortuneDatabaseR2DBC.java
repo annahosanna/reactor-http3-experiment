@@ -109,22 +109,18 @@ public class FortuneDatabaseR2DBC {
 
       Mono<Void> insertFortune = Mono.from(connectionFactory.create()).flatMap(
         connection -> {
-          Mono<Long> insertData = Mono.from(
+          Mono<H2Result> insertData = Mono.from(
             connection
               .createStatement("INSERT INTO fortunes (text) VALUES ($1)")
               .bind("$1", trimmedFortune)
               .execute()
-          ).flatMap(result -> {
-            return Mono.from(result.getRowsUpdated());
-          });
+          );
           insertData.subscribe();
-          //Close connection
           Mono<Void> closeConnection = Mono.from(connection.close());
           return closeConnection;
         }
       );
       insertFortune.subscribe();
-      // return Mono.empty();
     } catch (Exception e) {
       e.printStackTrace();
       fortune = "";

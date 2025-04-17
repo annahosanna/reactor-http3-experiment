@@ -24,8 +24,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    String responseText = ServeCommon.responseText();
-    Mono<String> responseContent;
+    Mono<String> responseContent = ServeCommon.responseTextR2DBC();
     System.out.println(
       request.hostName().toString() +
       " " +
@@ -46,9 +45,6 @@ public class ServeHttp11 {
     }
 
     response.header("content-type", "text/html");
-    response.header("content-length", Integer.toString(responseText.length()));
-    responseContent = Mono.just(responseText);
-    // response.header("ipgrade-insecure-requests", "1");
     response.header("upgrade", "h3, h2");
     response.header("connection", "Upgrade");
     response.header("alt-svc", "clear");
