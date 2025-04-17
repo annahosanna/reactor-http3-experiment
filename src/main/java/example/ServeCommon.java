@@ -174,6 +174,20 @@ public class ServeCommon {
     );
   }
 
+  public static Mono<String> responseTextR2DBC() {
+    return ((Mono<String>) (FortuneDatabaseR2DBC.getFortune())).flatMap(
+        fortune -> {
+          return (
+            Mono.just(
+              "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
+              fortune +
+              "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
+            )
+          );
+        }
+      );
+  }
+
   // This can be called from then()
   public static void updateDBWithString(String value) {
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
@@ -183,8 +197,17 @@ public class ServeCommon {
     }
   }
 
+  // This can be called from then()
+  public static void updateDBWithStringR2DBC(String value) {
+    if ((!Objects.isNull(value)) && (value.length() > 0)) {
+      FortuneDatabaseR2DBC.addFortune(value);
+    } else {
+      // System.out.println("No value");
+    }
+  }
+
   // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
-  // Only process first parameter. JDBC Code in lambda blocks so need to move this to a seperate worker thread with callable - although H2 is in memory so I am not really sure if the overhead is worth it.
+  // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
   public static Mono<String> doFilter(String result) {
     System.out.println("JSON value: " + result);
     String key = new String();
@@ -206,7 +229,8 @@ public class ServeCommon {
         }
       }
 
-      updateDBWithString(value);
+      //updateDBWithString(value);
+      updateDBWithStringR2DBC(value);
     }
     return Mono.just(result);
   }
@@ -346,7 +370,7 @@ public class ServeCommon {
   }
 
   public static void adjustEqualSign(List<String> list, String str) {
-    if ((str.contains("=")) && (!str.startsWith("=")) && (!str.isBlank())) {
+    if ((str.contains("=")) && (!str.startsWith("="))) {
       list.add(str);
     }
   }

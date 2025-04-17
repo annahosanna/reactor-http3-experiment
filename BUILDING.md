@@ -24,4 +24,4 @@
 - Other Tests
 
 1. test.sh attemps to open a whole bunch of connections (you will probably find you can't do more than about 500 per second)
-2. test2.sh invokes a few instances of test3.sh concurrently. The best results I have ever received are completing in linear time, but most often more connection results in significantly worse performance.
+2. test2.sh invokes a few instances of test3.sh concurrently. The best results I have ever received are completing in linear time, but most often more connections results in significantly worse performance.

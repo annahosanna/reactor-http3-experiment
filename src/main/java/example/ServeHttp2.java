@@ -25,13 +25,13 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    String responseText = ServeCommon.responseText();
-    Mono<String> responseContent;
+    //String responseText = ServeCommon.responseText();
+    Mono<String> responseContent = ServeCommon.responseTextR2DBC();
     System.out.println(request.path().toString() + " HTTP/2");
 
     response.header("content-type", "text/html");
-    response.header("content-length", Integer.toString(responseText.length()));
-    responseContent = Mono.just(responseText);
+    // response.header("content-length", Integer.toString(responseText.length()));
+    // responseContent = Mono.just(responseText);
     response.header(
       "alt-svc",
       "h3=\":443\"; ma=2592000, h3-29=\":443\"; ma=2592000, h2=\":443\"; ma=1"
