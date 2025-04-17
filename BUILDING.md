@@ -24,4 +24,5 @@
 - Other Tests
 
 1. test.sh attemps to open a whole bunch of connections (you will probably find you can't do more than about 500 per second)
-2. test2.sh invokes a few instances of test3.sh concurrently. The best results I have ever received are completing in linear time, but most often more connections results in significantly worse performance.
+2. test2.sh invokes a few instances of test3.sh concurrently. The performance from this is closely tied to efficient database access.
+3. Database performance may drop off after several million records have been added. I am not sure if this is related to H2 or memory management; however, after some point, every time test2.sh is executed performance will decrease slightly.
