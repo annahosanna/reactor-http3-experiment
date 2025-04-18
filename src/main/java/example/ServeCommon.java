@@ -143,12 +143,9 @@ public class ServeCommon {
 
   // Convert receive ByteBufMono to StringMono
   public static Mono<String> getMonoString(HttpServerRequest request) {
-    return request
-      .receive()
-      .aggregate()
-      .retain()
-      .asString()
-      .filter(str -> str.length() > 0);
+    return Mono.from(
+      request.receive().aggregate().asString().filter(str -> str.length() > 0)
+    );
   }
 
   // Wrap request to json conversion
@@ -209,7 +206,7 @@ public class ServeCommon {
   // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
   // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
   public static Mono<String> doFilter(String result) {
-    System.out.println("JSON value: " + result);
+    // System.out.println("JSON value: " + result);
     String key = new String();
     String value = new String();
     if (result.length() > 2) {
@@ -287,8 +284,8 @@ public class ServeCommon {
       ServeCommon::getFormParamName,
       ServeCommon::getFormParamValue
     );
-    return (
-      ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString)
+    return Mono.from(
+      (ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString))
     ).flatMap(ServeCommon::doFilter);
     // .filter(ServeCommon::doFilter2);
   }
