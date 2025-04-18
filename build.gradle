@@ -29,6 +29,7 @@ jar {
   manifest {
     attributes (
     'Main-Class' : 'example.ReactorHttp3Experiment'
+    // 'Main-Class' : 'example.MVP'
     )
   }
   archiveFileName = "http3-test.jar"
