@@ -9,6 +9,7 @@ import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,13 +32,12 @@ public class ServeCommon {
     String imageText = new String(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
-    Mono<String> responseContent;
+    Mono<String> responseContent = Mono.just(imageText);
     response.header("content-type", "image/svg+xml");
     response.header("content-length", Integer.toString(imageText.length()));
-    responseContent = Mono.just(imageText);
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000; persist=1, h3-29=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
     );
     return response.sendString(responseContent);
   }
@@ -142,10 +142,19 @@ public class ServeCommon {
   }
 
   // Convert receive ByteBufMono to StringMono
-  public static Mono<String> getMonoString(HttpServerRequest request) {
-    return Mono.from(
-      request.receive().aggregate().asString().filter(str -> str.length() > 0)
-    );
+  public static Mono<String> getMonoString(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    setCommonHeaders(response);
+    Mono<String> receivedData = request
+      .receive()
+      .aggregate()
+      .asString()
+      .delayElement(Duration.ofNanos(1))
+      .filter(str -> str.length() > 0);
+
+    return receivedData;
   }
 
   // Wrap request to json conversion
@@ -157,9 +166,10 @@ public class ServeCommon {
       ServeCommon::getHttpDataName,
       ServeCommon::getHttpDataValue
     );
-    return ServeCommon.convertMonoMapToMonoStringGeneric(
+    Mono<String> monoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringHttpData
-    ).flatMap(ServeCommon::doFilter); // .filter(ServeCommon::doFilter2);
+    ).flatMap(ServeCommon::doFilter);
+    return monoMapString;
   }
 
   // Random note to self .zipWith(Flux.interval())) can be used to create a delay
@@ -172,17 +182,17 @@ public class ServeCommon {
   }
 
   public static Mono<String> responseTextR2DBC() {
-    return ((Mono<String>) (FortuneDatabaseR2DBC.getFortune())).flatMap(
-        fortune -> {
-          return (
-            Mono.just(
-              "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
-              fortune +
-              "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
-            )
-          );
-        }
+    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune();
+    Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+      return (
+        Mono.just(
+          "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
+          fortune +
+          "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
+        )
       );
+    });
+    return createResponseText;
   }
 
   // This can be called from then()
@@ -203,10 +213,7 @@ public class ServeCommon {
     }
   }
 
-  // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
-  // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
-  public static Mono<String> doFilter(String result) {
-    // System.out.println("JSON value: " + result);
+  public static String doConvertJSONToValue(String result) {
     String key = new String();
     String value = new String();
     if (result.length() > 2) {
@@ -225,10 +232,24 @@ public class ServeCommon {
           value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
         }
       }
-
-      //updateDBWithString(value);
-      updateDBWithStringR2DBC(value);
     }
+    return (value);
+  }
+
+  // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
+  // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
+  public static Mono<String> doFilter(String result) {
+    System.out.println("JSON value: " + result);
+    Mono<String> valueOnly = Mono.just(doConvertJSONToValue(result));
+
+    //updateDBWithString(value);
+    valueOnly
+      .flatMap(value -> {
+        updateDBWithStringR2DBC(value);
+        return Mono.empty();
+      })
+      .subscribe();
+
     return Mono.just(result);
   }
 
@@ -257,7 +278,10 @@ public class ServeCommon {
     return true;
   }
 
-  public static Mono<String> getFormData(HttpServerRequest request) {
+  public static Mono<String> getFormData(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request
@@ -276,17 +300,21 @@ public class ServeCommon {
           HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
         );
     } else {
-      return Mono.empty();
+      return Mono.just("");
     }
-    Mono<String> rawMonoString = getMonoString(request);
+    Mono<String> rawMonoString = getMonoString(request, response);
     Flux<String> fluxString = convertMonoToFlux(rawMonoString);
     Mono<Map<String, String>> monoMapStringString = fluxString.collectMap(
       ServeCommon::getFormParamName,
       ServeCommon::getFormParamValue
     );
-    return Mono.from(
-      (ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString))
-    ).flatMap(ServeCommon::doFilter);
+    Mono<String> convertMonoMapString = convertMonoMapToMonoStringGeneric(
+      monoMapStringString
+    );
+    Mono<String> returnMonoString = convertMonoMapString.flatMap(
+      ServeCommon::doFilter
+    );
+    return returnMonoString;
     // .filter(ServeCommon::doFilter2);
   }
 

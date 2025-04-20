@@ -1,6 +1,7 @@
 package example;
 
 import example.FortuneDatabase;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.NettyOutbound;
 import reactor.netty.http.server.HttpServerRequest;
@@ -14,9 +15,10 @@ public class ServeHttp3 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> monoString = ServeCommon.getFormData(request);
-    ServeCommon.setCommonHeaders(response);
-    // ServeCommon.addPostToDatabase(request);
+    Mono<String> monoString = Flux.from(
+      ServeCommon.getFormData(request, response)
+    ).next();
+
     return response.sendString(monoString);
   }
 
