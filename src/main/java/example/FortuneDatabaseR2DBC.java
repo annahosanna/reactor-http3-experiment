@@ -5,6 +5,7 @@ import io.r2dbc.h2.H2Result;
 import java.util.List;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class FortuneDatabaseR2DBC {
 
