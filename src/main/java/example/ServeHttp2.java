@@ -28,7 +28,8 @@ public class ServeHttp2 {
     HttpServerResponse response
   ) {
     //String responseText = ServeCommon.responseText();
-    Mono<String> responseContent = ServeCommon.responseTextR2DBC();
+    Mono<String> responseContent = ServeCommon.responseTextR2DBC()
+      .subscribeOn(Schedulers.boundedElastic());
     System.out.println(
       request.hostName().toString() +
       " " +

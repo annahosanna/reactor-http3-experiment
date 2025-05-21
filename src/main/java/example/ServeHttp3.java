@@ -26,7 +26,8 @@ public class ServeHttp3 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> responseContent = ServeCommon.responseTextR2DBC();
+    Mono<String> responseContent = ServeCommon.responseTextR2DBC()
+      .subscribeOn(Schedulers.boundedElastic());
     System.out.println(
       request.hostName().toString() +
       " " +
@@ -36,7 +37,7 @@ public class ServeHttp3 {
     response.header("content-type", "text/html");
     response.header(
       "alt-svc",
-      "h3=\":443\"; ma=2592000; persist=1, h3-29=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
 
     return response.sendString(responseContent);

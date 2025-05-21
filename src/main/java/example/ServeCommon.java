@@ -151,8 +151,8 @@ public class ServeCommon {
       .receive()
       .aggregate()
       .asString()
-      .delayElement(Duration.ofNanos(1))
-      .filter(str -> str.length() > 0);
+      .filter(str -> str.length() > 0)
+      .subscribeOn(Schedulers.boundedElastic());
 
     return receivedData;
   }
@@ -182,7 +182,8 @@ public class ServeCommon {
   }
 
   public static Mono<String> responseTextR2DBC() {
-    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune();
+    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
+      .subscribeOn(Schedulers.boundedElastic());
     Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
       return (
         Mono.just(

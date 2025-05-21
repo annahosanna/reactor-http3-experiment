@@ -105,7 +105,7 @@ public class FortuneDatabaseR2DBC {
               .bind("$1", trimmedFortune)
               .execute()
           );
-          insertData.subscribe();
+          insertData.subscribeOn(Schedulers.boundedElastic()).subscribe();
           Mono<Void> closeConnection = Mono.from(connection.close());
           return closeConnection;
         }
