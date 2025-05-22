@@ -1,4 +1,3 @@
-function addTogether(a, b, c){
-	return a + b + c;
+function addTogether(a, b, c) {
+  return a + b - c;
 }
-

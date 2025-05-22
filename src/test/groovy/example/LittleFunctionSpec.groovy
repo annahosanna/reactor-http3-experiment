@@ -1,4 +1,18 @@
-package my.package
+package example
+
+import spock.lang.Specification
+import spock.lang.Shared
+import spock.lang.Stepwise
+import spock.lang.Unroll
+import spock.lang.Ignore
+import spock.lang.IgnoreIf
+import spock.lang.Retry
+import spock.lang.Timeout
+import spock.lang.IgnoreIf
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Scriptable;
+
+// file:///Users/gk.meier/Desktop/Software-Projects/reactor-http3-experiment/build/reports/tests/test/index.html
 
 class LittleFunctionSpec extends Specification{
 	Context context
@@ -39,7 +53,7 @@ class LittleFunctionSpec extends Specification{
 	@Unroll
 	def "check addTogether behaves for #a, #b, #c"(){
 	  given: "I have littleFunction.js loaded"
-			loadJSIntoContext("src/main/js/littleFunction.js")
+			loadJSIntoContext("src/test/js/littleFunction.js")
 
 			when: "I run the addTogether function for 1, 2, and 3"
 			String jsExercise = "var result = addTogether("+a+","+b+","+c+");"

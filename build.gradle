@@ -28,7 +28,12 @@ dependencies {
 }
 
 configurations {
-  compile
+   compile
+   testCompile
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jar {
