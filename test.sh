@@ -1,15 +1,18 @@
 #!/bin/bash
 
 hostname=$(hostname)
-time1=$(date +%s)
-echo "Start time: ${time1}"
-# Test rapid connections
-for i in {1..10000}
-do
-  sleep 0.0000001
-  curl -s --show-error http://${hostname}/fortune -d "key${i}=${time1}" -H "Content-Type:application/x-www-form-urlencoded" &
-done
-time2=$(date +%s)
-echo "End time (estimated): ${time2}"
-echo "Connections per second:"
-awk "BEGIN { print 10000.0/(${time2} - ${time1}) }"
+
+# for i in {1..5}
+# do
+  time3=$(date +%s)
+  for j in {1..5000}
+    do
+      sleep 0.0000001
+      curl http://${hostname}/fortune -d "key=k1&value=v1" -H "Content-Type:application/x-www-form-urlencoded" 2>>./log.txt >/dev/null &
+    done
+  time4=$(date +%s)
+  echo "Connections per second:"
+  awk "BEGIN { print 5000.0/(${time4} - ${time3}) }"
+  echo "TIME_WAIT"
+  netstat -an | grep TIME_WAIT | wc -l
+# done

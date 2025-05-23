@@ -10,6 +10,11 @@ certs.pem
 .classpath
 test3.cfg
 posts.txt
+test2.cfg
+test2.sh
+test3.sh
+err-log.txt
+log.txt
 
 # Compiled class file
 *.class
