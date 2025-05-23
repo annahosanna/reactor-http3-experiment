@@ -24,9 +24,7 @@ class LittleFunctionSpec extends Specification{
 	void setup(){
 		 context = Context.enter()
 
-		// Set version to JavaScript1.2 so that we get object-literal style
-		// printing instead of "[object Object]"
-		context.setLanguageVersion(Context.VERSION_1_8)
+		context.setLanguageVersion(Context.VERSION_ECMASCRIPT)
 
 		// Initialize the standard objects (Object, Function, etc.)
 		// This must be done before scripts can be executed.
@@ -53,7 +51,7 @@ class LittleFunctionSpec extends Specification{
 	@Unroll
 	def "check addTogether behaves for #a, #b, #c"(){
 	  given: "I have littleFunction.js loaded"
-			loadJSIntoContext("src/test/js/littleFunction.js")
+			loadJSIntoContext("./src/main/js/littleFunction.js")
 
 			when: "I run the addTogether function for 1, 2, and 3"
 			String jsExercise = "var result = addTogether("+a+","+b+","+c+");"
