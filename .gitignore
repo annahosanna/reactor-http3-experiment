@@ -8,6 +8,8 @@ certs.pem
 /bin/
 /build/
 .classpath
+test3.cfg
+posts.txt
 
 # Compiled class file
 *.class
