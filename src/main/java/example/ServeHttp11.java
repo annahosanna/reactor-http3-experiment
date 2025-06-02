@@ -66,3 +66,14 @@ public class ServeHttp11 {
     return response.sendString(responseContent);
   }
 }
+
+public static NettyOutbound processPutV11(
+  HttpServerRequest request,
+  HttpServerResponse response
+) {
+  Mono<String> monoString = Flux.from(
+    ServeCommon.getFormData(request, response)
+  ).next();
+
+  return response.sendString(monoString);
+}

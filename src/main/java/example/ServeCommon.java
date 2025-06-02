@@ -11,6 +11,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -215,6 +216,21 @@ public class ServeCommon {
     }
   }
 
+  public static Flux<Map<String, String>> updateDBWithStringR2DBC(
+    Map<String, String> value
+  ) {
+    if (!Objects.isNull(value)) {
+      FortuneDatabaseR2DBC.addFortune(value);
+    } else {
+      // System.out.println("No value");
+    }
+    // This does nothing
+    // ArrayList<Map<String, String>> kv = new ArrayList<Map<String, String>>(1);
+    // kv.add(new HashMap<String, String>());
+    // return Flux.fromIterable(kv);
+    return Flux.empty();
+  }
+
   public static String doConvertJSONToValue(String result) {
     String key = new String();
     String value = new String();
@@ -222,6 +238,7 @@ public class ServeCommon {
       try {
         List<Map<String, String>> pojo = new ObjectMapper()
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+        // Just read one object
         Map<String, String> map = pojo.iterator().next();
         key = map.get("Key");
         value = map.get("Value");
@@ -400,5 +417,61 @@ public class ServeCommon {
     if ((str.contains("=")) && (!str.startsWith("="))) {
       list.add(str);
     }
+  }
+
+  // Really what I want to do is convert the returnValue's map to a flux
+  // Invoke via flatMapMany
+  public static Flux<Map<String, String>> doConvertJSONToValues(String result) {
+    List<Map<String, String>> returnValue = new ArrayList<
+      Map<String, String>
+    >();
+    // Do not waste time parsing the impossible
+    // [{"":""}]
+    if (result.length() > 8) {
+      try {
+        returnValue = new ObjectMapper()
+          .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+      } catch (Exception e) {
+        e.printStackTrace();
+        return Flux.empty();
+      }
+    } else {
+      return Flux.empty();
+    }
+    return Flux.fromIterable(returnValue);
+  }
+
+  // Only accept json
+  public static Mono<String> getJsonPutData(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    if (
+      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
+      request
+        .requestHeaders()
+        .get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+    ) {
+      request
+        .requestHeaders()
+        .set(
+          HttpHeaderNames.CONTENT_TYPE,
+          HttpHeaderValues.APPLICATION_JSON.toString()
+        );
+    } else {
+      return Mono.just("[]");
+    }
+    Mono<String> rawMonoString = getMonoString(request, response);
+    // Check if rawMonoString is valid JSON with flatMap using jackson or fastjson.
+    // If its valid then return the string, otherwise return {}.
+    Flux<Map<String, String>> fluxString = rawMonoString.flatMapMany(
+      ServeCommon::doConvertJSONToValues
+    );
+
+    fluxString.flatMap(ServeCommon::updateDBWithStringR2DBC).subscribe();
+    Mono<String> returnMonoString = Mono.just("");
+    return returnMonoString;
   }
 }

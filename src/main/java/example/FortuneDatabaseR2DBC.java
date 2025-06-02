@@ -2,7 +2,10 @@ package example;
 
 import io.r2dbc.h2.H2ConnectionFactory;
 import io.r2dbc.h2.H2Result;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -83,6 +86,16 @@ public class FortuneDatabaseR2DBC {
       return Mono.just(((List<String>) list).get(0));
     }
     return Mono.just("");
+  }
+
+  public static void addFortune(Map<String, String> fortune) {
+    HashMap<String, String> fortuneHashMap = new HashMap<String, String>(
+      fortune
+    );
+    String[] fortunes = fortuneHashMap.values().toArray(new String[0]);
+    for (int i = 0; i < fortunes.length; i++) {
+      addFortune(fortunes[i]);
+    }
   }
 
   public static void addFortune(String fortune) {

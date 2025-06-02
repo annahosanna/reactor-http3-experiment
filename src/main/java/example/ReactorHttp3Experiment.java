@@ -35,6 +35,7 @@ public final class ReactorHttp3Experiment {
           .get("/fortune", ServeHttp11::okResponseV11)
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp11::processPostV11)
+          .put("/fortune", ServeHttp11::processPutV11)
       )
       .bindNow();
 
