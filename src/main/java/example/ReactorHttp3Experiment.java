@@ -61,6 +61,7 @@ public final class ReactorHttp3Experiment {
           .get("/fortune", ServeHttp2::okResponseV2)
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp2::processPostV2)
+          .put("/fortune", ServeHttp2::processPutV2)
       )
       .bindNow();
 
@@ -95,6 +96,7 @@ public final class ReactorHttp3Experiment {
           .get("/fortune", ServeHttp3::okResponseV3)
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp3::processPostV3)
+          .put("/fortune", ServeHttp3::processPutV3)
       )
       .bindNow();
 

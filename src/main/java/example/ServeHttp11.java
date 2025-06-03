@@ -65,15 +65,15 @@ public class ServeHttp11 {
     response.header("alt-svc", "clear");
     return response.sendString(responseContent);
   }
-}
 
-public static NettyOutbound processPutV11(
-  HttpServerRequest request,
-  HttpServerResponse response
-) {
-  Mono<String> monoString = Flux.from(
-    ServeCommon.getFormData(request, response)
-  ).next();
+  public static NettyOutbound processPutV11(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    Mono<String> monoString = Flux.from(
+      ServeCommon.processPutData(request, response)
+    ).next();
 
-  return response.sendString(monoString);
+    return response.sendString(monoString);
+  }
 }

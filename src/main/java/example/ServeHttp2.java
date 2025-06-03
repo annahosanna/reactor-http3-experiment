@@ -52,4 +52,15 @@ public class ServeHttp2 {
 
     return response.sendString(responseContent);
   }
+
+  public static NettyOutbound processPutV2(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    Mono<String> monoString = Flux.from(
+      ServeCommon.processPutData(request, response)
+    ).next();
+
+    return response.sendString(monoString);
+  }
 }

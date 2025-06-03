@@ -442,7 +442,7 @@ public class ServeCommon {
   }
 
   // Only accept json
-  public static Mono<String> getJsonPutData(
+  public static Mono<String> processPutData(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
@@ -461,7 +461,7 @@ public class ServeCommon {
           HttpHeaderValues.APPLICATION_JSON.toString()
         );
     } else {
-      return Mono.just("[]");
+      return Mono.just("");
     }
     Mono<String> rawMonoString = getMonoString(request, response);
     // Check if rawMonoString is valid JSON with flatMap using jackson or fastjson.

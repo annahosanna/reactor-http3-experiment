@@ -7,8 +7,8 @@
     - Remove server side rendering:
       - Currently only the form content is rendered.
     - Make form data more robust
-      - Passing data in JSON format removes the null value ambiguity.
-        - Which is to say JSON can represent the value of "" as different than 0x00
+      - Passing data in JSON format removes type ambiguity.
+        - Which is to say JSON can represent the value of "" != null; "1" != 1
     - Placing static content in the SPA removes the need to cache it on the server side.
     - Current static content:
       - Images
@@ -20,7 +20,7 @@
 - Implement caching
   - How to efficently store static data which will be returned, without reading it from the filesystem every time
     - Cache it client side or in a CDN
-- Add URL to handle Put
+- Handle multiple methods
   - Get - Read data
     - Retrieve data from the server (either from a static or dynamic url)
   - Post - Create data
@@ -31,7 +31,8 @@
   - Put - Update (or create)
     - Non interactive
     - Structure the logic to expect the entire object rather than logic that expects only a part of the data
-    - Normally dynamic urls contain subject/unique ID
+      - Eg. pass the whole user object, even if only the name is updated
+      - Normally dynamic urls contain subject/unique ID
     - Content-Type could be anything
     - Per RFC json content-type is application/json
       - Fastjson and Jackson are widely used.

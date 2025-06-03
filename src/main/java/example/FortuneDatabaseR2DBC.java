@@ -46,7 +46,7 @@ public class FortuneDatabaseR2DBC {
         .build()
     );
 
-    String fortune = new String();
+    // String fortune = new String();
 
     try {
       Class.forName("org.h2.Driver");
