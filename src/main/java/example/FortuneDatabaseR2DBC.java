@@ -2,6 +2,9 @@ package example;
 
 import io.r2dbc.h2.H2ConnectionFactory;
 import io.r2dbc.h2.H2Result;
+import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +34,23 @@ public class FortuneDatabaseR2DBC {
       "The future belongs to those who believe in the beauty of their dreams",
       "Life is what happens while you are busy making other plans",
     };
+    String dbUrl =
+      "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+    try {
+      Class.forName("org.h2.Driver");
+      try (Connection conn = DriverManager.getConnection(dbUrl, "sa", "")) {
+        conn
+          .createStatement()
+          .execute(
+            "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, text VARCHAR(255))"
+          );
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     for (int i = 0; i < initialFortunes.length; i++) {
       System.out.println("Adding initial fortune: " + initialFortunes[i]);
       addFortune(initialFortunes[i]);
@@ -47,7 +67,7 @@ public class FortuneDatabaseR2DBC {
         .build()
     );
 
-    // String fortune = new String();
+    String fortune = new String();
 
     try {
       Class.forName("org.h2.Driver");
