@@ -151,7 +151,16 @@ public class ServeCommon {
       .receive()
       .aggregate()
       .asString()
-      .filter(str -> str.length() > 0)
+      // .filter(str -> str.length() > 0)
+      .flatMap(str -> {
+        if (str.length() > 0) {
+          System.out.println("Received data: " + str);
+          return Mono.just(str);
+        } else {
+          System.out.println("No data received");
+          return Mono.empty();
+        }
+      })
       .subscribeOn(Schedulers.boundedElastic());
 
     return receivedData;
@@ -495,10 +504,7 @@ public class ServeCommon {
     System.out.println("doConvertJSONToValues - Mono");
     // Fix this to flatMap
     // Decorate mono as flux
-    Mono<String> test = value.flatMap(s -> {
-      System.out.println("Value = " + s);
-      return Mono.just("");
-    });
+
     Flux<String> flux = Flux.from(value);
     return flux.flatMap(ServeCommon::doConvertJSONToValues);
     // return Flux.empty();
@@ -564,11 +570,7 @@ public class ServeCommon {
       updateDBWithStringR2DBC(s);
       return Flux.just("");
     });
-    Mono<String> waiter = dbFlux.next();
-    // Mono<Void> waiter = fluxString
-    //   .flatMap(ServeCommon::updateDBWithStringR2DBC)
-    //   .then();
-    Mono<String> returnMonoString = Mono.just("");
-    return returnMonoString;
+    Mono<String> waiter = dbFlux.last("");
+    return waiter;
   }
 }
