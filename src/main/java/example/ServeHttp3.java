@@ -5,6 +5,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Map;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,7 +31,7 @@ public class ServeHttp3 {
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     ).next();
-    HashMap<String, String> uriParams = request.params();
+    Map<String, String> uriParams = request.params();
     uriParams.forEach((key, value) -> {
       System.out.println(key + ": " + value);
     });
@@ -51,8 +52,10 @@ public class ServeHttp3 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> responseContent = ServeCommon.responseTextR2DBC()
-      .subscribeOn(Schedulers.boundedElastic());
+    Mono<String> responseContent = ServeCommon.responseTextR2DBC(
+      request,
+      response
+    ).subscribeOn(Schedulers.boundedElastic());
     System.out.println(
       request.hostName().toString() +
       " " +
@@ -79,6 +82,7 @@ public class ServeHttp3 {
       "alt-svc",
       "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
-    return response.sendString(monoString);
+    response.status(200);
+    return response.sendString(Mono.just(""));
   }
 }

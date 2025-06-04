@@ -6,6 +6,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Map;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -36,7 +37,7 @@ public class ServeHttp11 {
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     ).next();
-    HashMap<String, String> uriParams = request.params();
+    Map<String, String> uriParams = request.params();
     uriParams.forEach((key, value) -> {
       System.out.println(key + ": " + value);
     });
@@ -85,6 +86,6 @@ public class ServeHttp11 {
     ).next();
 
     // response.status(204);
-    return response.sendString("");
+    return response.sendString(Mono.just(""));
   }
 }

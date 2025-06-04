@@ -44,6 +44,21 @@ public class ServeCommon {
     return response.sendString(responseContent);
   }
 
+  public static NettyOutbound returnDefaultRoute(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    Mono<String> responseContent = Mono.just(responseText());
+    response.header("content-type", "text/html");
+    // response.header("content-length", Integer.toString(imageText.length()));
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
+    );
+    response.status(200);
+    return response.sendString(responseContent);
+  }
+
   public static String getHttpDataName(HttpData httpData) {
     String name = new String();
     if (httpData instanceof Attribute) {
@@ -488,9 +503,6 @@ public class ServeCommon {
       ServeCommon::doConvertJSONToValues
     );
 
-    if (fluxString == Flux.empty()) {
-      //bad
-    }
     fluxString.flatMap(ServeCommon::updateDBWithStringR2DBC).subscribe();
     Mono<String> returnMonoString = Mono.just("");
     return returnMonoString;
