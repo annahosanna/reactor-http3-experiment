@@ -495,6 +495,10 @@ public class ServeCommon {
     System.out.println("doConvertJSONToValues - Mono");
     // Fix this to flatMap
     // Decorate mono as flux
+    Mono<String> test = value.flatMap(s -> {
+      System.out.println("Value = " + s);
+      return Mono.just("");
+    });
     Flux<String> flux = Flux.from(value);
     return flux.flatMap(ServeCommon::doConvertJSONToValues);
     // return Flux.empty();
@@ -554,10 +558,13 @@ public class ServeCommon {
     //);
     // fluxString.subscribe();
 
-    Flux<String> dbFlex = fluxString.flatMap(s -> {
+    // Does not matter if there is a waiter. It never invokes flatMap here or in doConvertJSONToValues
+    // next() had no effect either
+    Flux<String> dbFlux = fluxString.flatMap(s -> {
       updateDBWithStringR2DBC(s);
       return Flux.just("");
     });
+    Mono<String> waiter = dbFlux.next();
     // Mono<Void> waiter = fluxString
     //   .flatMap(ServeCommon::updateDBWithStringR2DBC)
     //   .then();
