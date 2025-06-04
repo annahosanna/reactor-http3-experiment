@@ -89,6 +89,7 @@ public class FortuneDatabaseR2DBC {
   }
 
   public static void addFortune(Map<String, String> fortune) {
+    System.out.println("Adding fortune - via map");
     HashMap<String, String> fortuneHashMap = new HashMap<String, String>(
       fortune
     );
@@ -99,6 +100,7 @@ public class FortuneDatabaseR2DBC {
   }
 
   public static void addFortune(String fortune) {
+    System.out.println("Adding fortune - via string: " + fortune);
     H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
       io.r2dbc.h2.H2ConnectionConfiguration.builder()
         .url("mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;")
