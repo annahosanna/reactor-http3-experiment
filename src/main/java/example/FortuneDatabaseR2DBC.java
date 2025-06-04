@@ -32,6 +32,7 @@ public class FortuneDatabaseR2DBC {
       "Life is what happens while you are busy making other plans",
     };
     for (int i = 0; i < initialFortunes.length; i++) {
+      System.out.println("Adding initial fortune: " + initialFortunes[i]);
       addFortune(initialFortunes[i]);
     }
   }

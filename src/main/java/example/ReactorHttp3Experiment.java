@@ -1,6 +1,6 @@
 package example;
 
-import example.FortuneDatabase;
+import example.FortuneDatabaseR2DBC;
 import example.ServeCommon;
 import io.netty.channel.ChannelOption;
 import java.io.File;
@@ -20,7 +20,7 @@ public final class ReactorHttp3Experiment {
   static final boolean COMPRESS = true;
 
   public static void main(String[] args) throws Exception {
-    FortuneDatabase fortuneDatabase = new FortuneDatabase();
+    FortuneDatabaseR2DBC fortuneDatabase = new FortuneDatabaseR2DBC();
     HttpServer serverV11 = HttpServer.create()
       .port(80)
       .wiretap(false)
