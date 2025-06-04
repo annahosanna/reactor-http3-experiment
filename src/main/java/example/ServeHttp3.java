@@ -31,10 +31,7 @@ public class ServeHttp3 {
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     ).next();
-    Map<String, String> uriParams = request.params();
-    uriParams.forEach((key, value) -> {
-      System.out.println(key + ": " + value);
-    });
+
     // Need to find another way to get hostname
     response.header(
       "location",

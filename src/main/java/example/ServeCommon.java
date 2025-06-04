@@ -185,15 +185,33 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    for (Map.Entry<String, String> element : request
+      .requestHeaders()
+      .entries()) {
+      String key = element.getKey();
+      String value = element.getValue();
+      System.out.println("Key: " + key + ", Value: " + value);
+    }
+
     Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
       .subscribeOn(Schedulers.boundedElastic());
     if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.TEXT_HTML.toString().toLowerCase())
+      ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
+        (request
+            .requestHeaders()
+            .get(HttpHeaderNames.CONTENT_TYPE)
+            .toLowerCase()
+            .startsWith(
+              HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
+            ))) ||
+      (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) != null) &&
+          (request
+              .requestHeaders()
+              .get(HttpHeaderNames.ACCEPT)
+              .toLowerCase()
+              .startsWith(
+                HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
+              ))))
     ) {
       response.header("cache-control", "no-cache");
       response.header("content-type", "text/html");
@@ -210,12 +228,22 @@ public class ServeCommon {
       });
       return createResponseText;
     } else if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+      ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
+        (request
+            .requestHeaders()
+            .get(HttpHeaderNames.CONTENT_TYPE)
+            .toLowerCase()
+            .startsWith(
+              HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+            ))) ||
+      (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) != null) &&
+          (request
+              .requestHeaders()
+              .get(HttpHeaderNames.ACCEPT)
+              .toLowerCase()
+              .startsWith(
+                HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+              ))))
     ) {
       response.header("cache-control", "no-cache");
       response.header("content-type", "application/json");
@@ -223,6 +251,7 @@ public class ServeCommon {
       Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
         return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
       });
+      return createResponseText;
     }
     // Default
     response.status(415);
@@ -244,7 +273,9 @@ public class ServeCommon {
 
   // This can be called from then()
   public static void updateDBWithStringR2DBC(String value) {
+    System.out.println("updateDBWithStringR2DBC");
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
+      System.out.println("updateDBWithStringR2DBC Adding Fortune: " + value);
       FortuneDatabaseR2DBC.addFortune(value);
     } else {
       // System.out.println("No value");
@@ -294,7 +325,9 @@ public class ServeCommon {
   // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
   public static Mono<String> doFilter(String result) {
     System.out.println("JSON value: " + result);
-    Mono<String> valueOnly = Mono.just(doConvertJSONToValue(result));
+    Mono<String> valueOnly = (doConvertJSONToValue(result) == null)
+      ? Mono.empty()
+      : Mono.just(doConvertJSONToValue(result));
 
     //updateDBWithString(value);
     valueOnly
@@ -304,6 +337,9 @@ public class ServeCommon {
       })
       .subscribe();
 
+    if (result == null) {
+      return Mono.empty();
+    }
     return Mono.just(result);
   }
 
@@ -455,27 +491,47 @@ public class ServeCommon {
     }
   }
 
+  public static Flux<String> doConvertJSONToValues(Mono<String> value) {
+    System.out.println("doConvertJSONToValues - Mono");
+    // Fix this to flatMap
+    // Decorate mono as flux
+    Flux<String> flux = Flux.from(value);
+    return flux.flatMap(ServeCommon::doConvertJSONToValues);
+    // return Flux.empty();
+  }
+
   // Really what I want to do is convert the returnValue's map to a flux
   // Invoke via flatMapMany
-  public static Flux<Map<String, String>> doConvertJSONToValues(String result) {
-    List<Map<String, String>> returnValue = new ArrayList<
-      Map<String, String>
-    >();
+  public static Flux<String> doConvertJSONToValues(String result) {
+    System.out.println("doConvertJSONToValues");
+
     // Do not waste time parsing the impossible
     // [{"":""}]
     if (result.length() > 8) {
       try {
-        returnValue = new ObjectMapper()
+        // First convert the json string to an object
+        // Then convert the List of Maps to only map values
+        System.out.println("parse result");
+        List<Map<String, String>> returnValue = new ObjectMapper()
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+
+        List<String> values = new ArrayList<String>();
+
+        for (Map<String, String> element : returnValue) {
+          for (Map.Entry<String, String> entry : element.entrySet()) {
+            values.add(entry.getValue());
+          }
+        }
+        return Flux.fromIterable(values);
       } catch (Exception e) {
         e.printStackTrace();
         // response.status(422);
         return Flux.empty();
       }
     } else {
+      System.out.println("result to short");
       return Flux.empty();
     }
-    return Flux.fromIterable(returnValue);
   }
 
   // Only accept json
@@ -483,27 +539,28 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
-    ) {
-      response.status(204);
-    } else {
-      response.status(415);
-      return Mono.just("");
-    }
+    System.out.println("processPutData");
     Mono<String> rawMonoString = getMonoString(request, response);
     // Check if rawMonoString is valid JSON with flatMap using jackson or fastjson.
     // If its valid then return the string, otherwise return {}.
-    Flux<Map<String, String>> fluxString = rawMonoString.flatMapMany(
-      ServeCommon::doConvertJSONToValues
-    );
+    // Flux<Map<String, String>> fluxString = rawMonoString.flatMapMany(
+    //ServeCommon::doConvertJSONToValues
+    // );
+    //Flux<String> fluxString = rawMonoString.thenMany(
+    //ServeCommon::doConvertJSONToValues
+    //);
+    // fluxString.subscribe();
+    Flux<String> fluxString = doConvertJSONToValues(rawMonoString);
+    //);
+    // fluxString.subscribe();
 
-    fluxString.flatMap(ServeCommon::updateDBWithStringR2DBC).subscribe();
+    Flux<String> dbFlex = fluxString.flatMap(s -> {
+      updateDBWithStringR2DBC(s);
+      return Flux.just("");
+    });
+    // Mono<Void> waiter = fluxString
+    //   .flatMap(ServeCommon::updateDBWithStringR2DBC)
+    //   .then();
     Mono<String> returnMonoString = Mono.just("");
     return returnMonoString;
   }

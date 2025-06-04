@@ -3,6 +3,8 @@ package example;
 import example.FortuneDatabase;
 import example.ServeCommon;
 import io.netty.channel.ChannelOption;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
@@ -32,10 +34,7 @@ public class ServeHttp2 {
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     ).next();
-    Map<String, String> uriParams = request.params();
-    uriParams.forEach((key, value) -> {
-      System.out.println(key + ": " + value);
-    });
+
     // Need to find another way to get hostname
     response.header(
       "location",
@@ -74,14 +73,28 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("processPutV2");
+    if (
+      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
+      request
+        .requestHeaders()
+        .get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+    ) {} else {
+      response.status(415);
+      return response.sendString(Mono.just(""));
+    }
+
     Mono<String> monoString = Flux.from(
       ServeCommon.processPutData(request, response)
     ).next();
+    response.status(204);
+    response.header("content-type", "application/json");
     response.header(
       "alt-svc",
       "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
-    response.status(200);
     return response.sendString(Mono.just(""));
   }
 }
