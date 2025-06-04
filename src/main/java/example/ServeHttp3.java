@@ -4,6 +4,7 @@ import example.FortuneDatabase;
 import io.netty.channel.ChannelOption;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
+import java.util.HashMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -29,7 +30,20 @@ public class ServeHttp3 {
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     ).next();
-
+    HashMap<String, String> uriParams = request.params();
+    uriParams.forEach((key, value) -> {
+      System.out.println(key + ": " + value);
+    });
+    // Need to find another way to get hostname
+    response.header(
+      "location",
+      "https://" + request.hostName().toString() + "/fortune"
+    );
+    response.status(302);
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
+    );
     return response.sendString(monoString);
   }
 
@@ -61,7 +75,10 @@ public class ServeHttp3 {
     Mono<String> monoString = Flux.from(
       ServeCommon.processPutData(request, response)
     ).next();
-
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
+    );
     return response.sendString(monoString);
   }
 }

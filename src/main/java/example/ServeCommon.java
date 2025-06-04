@@ -44,22 +44,6 @@ public class ServeCommon {
     return response.sendString(responseContent);
   }
 
-  public static void setCommonHeaders(HttpServerResponse response) {
-    response.status(301);
-    try {
-      response.header(
-        "location",
-        "https://" +
-        java.net.InetAddress.getLocalHost().getHostName() +
-        "/fortune"
-      );
-    } catch (Exception e) {
-      response.header("location", "https://localhost/fortune");
-    }
-    response.header("content-type", "text/html");
-    response.header("content-length", "0");
-  }
-
   public static String getHttpDataName(HttpData httpData) {
     String name = new String();
     if (httpData instanceof Attribute) {
@@ -148,7 +132,6 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    setCommonHeaders(response);
     Mono<String> receivedData = request
       .receive()
       .aggregate()
@@ -183,19 +166,56 @@ public class ServeCommon {
     );
   }
 
-  public static Mono<String> responseTextR2DBC() {
+  public static Mono<String> responseTextR2DBC(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
     Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
       .subscribeOn(Schedulers.boundedElastic());
-    Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-      return (
-        Mono.just(
-          "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
-          fortune +
-          "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
-        )
-      );
-    });
-    return createResponseText;
+    if (
+      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
+      request
+        .requestHeaders()
+        .get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.TEXT_HTML.toString().toLowerCase())
+    ) {
+      response.header("cache-control", "no-cache");
+      response.header("content-type", "text/html");
+      response.status(200);
+
+      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+        return (
+          Mono.just(
+            "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
+            fortune +
+            "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
+          )
+        );
+      });
+      return createResponseText;
+    } else if (
+      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
+      request
+        .requestHeaders()
+        .get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+    ) {
+      response.header("cache-control", "no-cache");
+      response.header("content-type", "application/json");
+      response.status(200);
+      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+        return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
+      });
+    }
+    // Default
+    response.status(415);
+    return (
+      Mono.just(
+        "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body>There was a problem processing your request: Unsupported media type</body></html>"
+      )
+    );
   }
 
   // This can be called from then()
@@ -319,6 +339,7 @@ public class ServeCommon {
           HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
         );
     } else {
+      response.status(415);
       return Mono.just("");
     }
     Mono<String> rawMonoString = getMonoString(request, response);
@@ -433,6 +454,7 @@ public class ServeCommon {
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
       } catch (Exception e) {
         e.printStackTrace();
+        // response.status(422);
         return Flux.empty();
       }
     } else {
@@ -454,13 +476,9 @@ public class ServeCommon {
         .toLowerCase()
         .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
     ) {
-      request
-        .requestHeaders()
-        .set(
-          HttpHeaderNames.CONTENT_TYPE,
-          HttpHeaderValues.APPLICATION_JSON.toString()
-        );
+      response.status(204);
     } else {
+      response.status(415);
       return Mono.just("");
     }
     Mono<String> rawMonoString = getMonoString(request, response);
@@ -470,6 +488,9 @@ public class ServeCommon {
       ServeCommon::doConvertJSONToValues
     );
 
+    if (fluxString == Flux.empty()) {
+      //bad
+    }
     fluxString.flatMap(ServeCommon::updateDBWithStringR2DBC).subscribe();
     Mono<String> returnMonoString = Mono.just("");
     return returnMonoString;
