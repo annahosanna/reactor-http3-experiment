@@ -511,7 +511,7 @@ public class ServeCommon {
   }
 
   public static void adjustEqualSign(List<String> list, String str) {
-    if ((str.contains("=")) && (!str.startsWith("="))) {
+    if ((str.contains("=")) && (!str.startsWith("=")) && (str.length() > 0)) {
       list.add(str);
     }
   }
@@ -547,8 +547,14 @@ public class ServeCommon {
 
         for (Map<String, String> element : returnValue) {
           for (Map.Entry<String, String> entry : element.entrySet()) {
+            if (entry.getValue() == null) {
+              continue;
+            }
             values.add(entry.getValue());
           }
+        }
+        if (values.toArray().length == 0) {
+          return Flux.empty();
         }
         return Flux.fromIterable(values);
       } catch (Exception e) {

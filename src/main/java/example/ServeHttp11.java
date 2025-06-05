@@ -36,6 +36,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Post HTTP/1.1");
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     ).next();
@@ -59,6 +60,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Get HTTP/1.1");
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
       response
@@ -80,7 +82,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    System.out.println("processPutV11");
+    System.out.println("Put HTTP/1.1");
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request

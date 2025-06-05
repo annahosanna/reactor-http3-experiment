@@ -32,6 +32,7 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Post HTTP/2");
     // Wow adding a flatMap must be the weirdest work around ever
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
@@ -58,6 +59,7 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Get HTTP/2");
     //String responseText = ServeCommon.responseText();
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
@@ -79,7 +81,7 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    System.out.println("processPutV2");
+    System.out.println("Put HTTP/2");
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request

@@ -31,6 +31,7 @@
 ## Testing Notes
 
 - SPA Testing
+  - Spock + Rhino configured for JS testing
 - Browser Testing
   - Firefox has settings to enable http3 with self signed certs. (see below)
   - Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
@@ -54,7 +55,7 @@
 - Does your browser support the same versions of quic, and http3 as the server? (or only one of the drafts instead)
 - Http3 is unlike Http 1.1/2 and uses QUIC "channels" for header and data "frames".
 - QUIC frames can arrive out of order. TCP enforces the order for other http protocols.
-- Http3 requires QUIC. However, to QUIC, http3 is an upper layer (i.e. it doesn't care about the upper layer protocol). In the OSI modelthink about TCP/UDP as layer 4, QUIC as layer 5, and HTTP/3 as layer 6/7.
+- Http3 requires QUIC. However, to QUIC, http3 is an upper layer (i.e. it doesn't care about the upper layer protocol). In the OSI model think about TCP/UDP as layer 4, QUIC as layer 5, and HTTP/3 as layer 6/7.
 - An http3 server is not establishing a layer on tcp/udp with quic functionality. An http3 server is estabishing a stream (aka channel) on top of quic. This may seem mindbending for people used to implementing application servers on tcp - especially since quic is in userspace running as a part of the application server. An http3 server just handles data on a quic channel.
 - Breaking this down a bit farther it means one piece of the program focuses on creating quic on top of udp, and a different part of the program focuses on creating http3 on top of quic.
 - Ports are not part of quic. Ports are a part of tcp/udp.
@@ -64,7 +65,7 @@
 ## Client - Server interaction Basics
 
 - Make sure your statefull firewall can handle UDP, since HTTP/3 is on top of QUIC, and QUIC is on top of UDP.
-- From the http/3 rfc - regarding the client: To the client everything appears to be the same. The URI (including the URL, scheme, host and port), and the same x509 certificate must also be used (Similar to CNAMES).
+- From the http/3 rfc - regarding the client: To the client everything must appear to be the same. The URI (including the URL, scheme, host and port), and the same x509 certificate must also be used (Similar to CNAMES).
 - QUIC supports SNI for virtual hosts.
 - My conclusions about this:
   1. The only way the scheme would not change is if http 1.1/2 were already using https, otherwise upgrade it to https first.
