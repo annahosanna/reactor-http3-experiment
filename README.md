@@ -30,16 +30,17 @@
 
 ## Testing Notes
 
-- Firefox has settings to enable http3 with self signed certs. (see below)
-- Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
-- For Chrome: Do not use "localhost" or "127.0.0.1" in your URL, but the actual hostname (Your software should not bind to localhost either)
-- Certificates must be x509v3, have an extened key usage of serverAuth, and have the hostname or wildcard in the SAN. Note that wildcards can only be for subdomains - so if you have a self signed certificate you cannot have `*.local` as a SAN.
-- QUIC is espeially sensitive to valid certificates, and will silently fail to negotiate - even in developer mode, browsers do not report HTTP/3 connection attempts
-- Oddly Firefox requests favicon.ico with every http3 request, but not with http2. (see below for how to prevent)
-
-1.  Chrome triggers an ssl error: Server error `javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown` when ByteToMessageDecoder tries to decode the ssl stream. When requesting a page if a certificate is not trusted (such as the first visit to the site, using the refresh button, or when the Alt-Svc h2 ma expires) but not by following a link on the site; however, despite the server error, the correct content is returned via http/2 instead.
-2.  Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
-3.  I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
+- SPA Testing
+- Browser Testing
+  - Firefox has settings to enable http3 with self signed certs. (see below)
+  - Chrome keeps triggering errors on the server (Unless WebDeveloper Transport Tools are enable, in which case it doesn't even try http/3).
+  - For Chrome: Do not use "localhost" or "127.0.0.1" in your URL, but the actual hostname (Your software should not bind to localhost either)
+  - Certificates must be x509v3, have an extened key usage of serverAuth, and have the hostname or wildcard in the SAN. Note that wildcards can only be for subdomains - so if you have a self signed certificate you cannot have `*.local` as a SAN.
+  - QUIC is espeially sensitive to valid certificates, and will silently fail to negotiate - even in developer mode, browsers do not report HTTP/3 connection attempts
+  - Oddly Firefox requests favicon.ico with every http3 request, but not with http2. (see below for how to prevent)
+    1. Chrome triggers an ssl error: Server error `javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown` when ByteToMessageDecoder tries to decode the ssl stream. When requesting a page if a certificate is not trusted (such as the first visit to the site, using the refresh button, or when the Alt-Svc h2 ma expires) but not by following a link on the site; however, despite the server error, the correct content is returned via http/2 instead.
+    2. Still do not know which QUIC token handler is in use (Netty QUIC includes an insecure token handler, so I do not know if a secure token handler is in use).
+    3. I do not know if a missing page causes the browser to fall back to http2; therefore, since favicon is always silently requested, I have accounted for that by returning an empty svg. Adding `link` to the header as in `<!DOCTYPE html><html><head><link rel="icon" href="data:,"/></head><body></body></html>` also prevents it from loading.
 
 ## Basics of HTTP/3
 
