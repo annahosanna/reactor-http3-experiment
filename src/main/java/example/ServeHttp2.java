@@ -95,7 +95,7 @@ public class ServeHttp2 {
     Mono<String> monoString = Flux.from(
       ServeCommon.processPutData(request, response)
     )
-      .next()
+      .last()
       .flatMap(data -> Mono.just(""));
     response.status(204);
     response.header("content-type", "application/json");

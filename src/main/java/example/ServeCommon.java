@@ -501,7 +501,7 @@ public class ServeCommon {
   }
 
   public static Flux<String> doConvertJSONToValues(Mono<String> value) {
-    System.out.println("doConvertJSONToValues - Mono");
+    System.out.println("doConvertJSONToValues - Mono -> Flux");
     // Fix this to flatMap
     // Decorate mono as flux
 
@@ -513,7 +513,7 @@ public class ServeCommon {
   // Really what I want to do is convert the returnValue's map to a flux
   // Invoke via flatMapMany
   public static Flux<String> doConvertJSONToValues(String result) {
-    System.out.println("doConvertJSONToValues");
+    System.out.println("doConvertJSONToValues - String -> Flux");
 
     // Do not waste time parsing the impossible
     // [{"":""}]
