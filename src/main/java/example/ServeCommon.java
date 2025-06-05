@@ -592,7 +592,9 @@ public class ServeCommon {
         return Flux.empty();
       }
     } else {
-      System.out.println("result to short");
+      System.out.println(
+        "String to short to be valid JSON for List<Map<String, String>>"
+      );
       return Flux.empty();
     }
   }
@@ -602,7 +604,7 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    System.out.println("processPutData");
+    // System.out.println("processPutData");
     Mono<String> rawMonoString = getMonoString(request, response);
     // Check if rawMonoString is valid JSON with flatMap using jackson or fastjson.
     // If its valid then return the string, otherwise return {}.
