@@ -36,6 +36,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Post HTTP/1.1");
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
@@ -60,17 +61,12 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Get HTTP/1.1");
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
       response
     ).subscribeOn(Schedulers.boundedElastic());
-    System.out.println(
-      request.hostName().toString() +
-      " " +
-      request.path().toString() +
-      " HTTP 1.1"
-    );
 
     response.header("alt-svc", "h3=\":443\"; ma=2592000, h2=\":443\"; ma=1");
     return response.sendString(responseContent);
@@ -82,6 +78,7 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Put HTTP/1.1");
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
