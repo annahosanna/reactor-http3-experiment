@@ -262,6 +262,31 @@ public class ServeCommon {
         return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
       });
       return createResponseText;
+    } else if (
+      ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
+        (request
+            .requestHeaders()
+            .get(HttpHeaderNames.CONTENT_TYPE)
+            .toLowerCase()
+            .startsWith(
+              HttpHeaderValues.TEXT_PLAIN.toString().toLowerCase()
+            ))) ||
+      (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) != null) &&
+          (request
+              .requestHeaders()
+              .get(HttpHeaderNames.ACCEPT)
+              .toLowerCase()
+              .startsWith(
+                HttpHeaderValues.TEXT_PLAIN.toString().toLowerCase()
+              ))))
+    ) {
+      response.header("cache-control", "no-cache");
+      response.header("content-type", "application/json");
+      response.status(200);
+      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+        return (Mono.just(fortune));
+      });
+      return createResponseText;
     }
     // Default
     response.status(415);
@@ -401,7 +426,11 @@ public class ServeCommon {
         );
     } else {
       response.status(415);
-      return Mono.just("");
+      return (
+        Mono.just(
+          "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body>There was a problem processing your request: Unsupported media type</body></html>"
+        )
+      );
     }
     Mono<String> rawMonoString = getMonoString(request, response);
     Flux<String> fluxString = convertMonoToFlux(rawMonoString);
