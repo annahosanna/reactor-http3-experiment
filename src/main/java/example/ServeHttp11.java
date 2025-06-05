@@ -3,6 +3,8 @@ package example;
 import example.FortuneDatabase;
 import example.ServeCommon;
 import io.netty.channel.ChannelOption;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
@@ -78,11 +80,30 @@ public class ServeHttp11 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    System.out.println("processPutV11");
+    if (
+      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
+      request
+        .requestHeaders()
+        .get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+    ) {} else {
+      response.status(415);
+      return response.sendString(Mono.just(""));
+    }
+
     Mono<String> monoString = Flux.from(
       ServeCommon.processPutData(request, response)
-    ).next();
-
-    // response.status(204);
-    return response.sendString(Mono.just(""));
+    )
+      .last()
+      .flatMap(data -> Mono.just(""));
+    response.status(204);
+    response.header("content-type", "application/json");
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
+    );
+    return response.sendString(monoString);
   }
 }

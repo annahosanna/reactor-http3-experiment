@@ -133,9 +133,10 @@ public class ServeCommon {
                   ""
                 );
             }
-            return ("{\"Key\":" + key + ",\"Value\":" + value + "}");
+            // return ("{\"Key\":" + key + ",\"Value\":" + value + "}");
+            return ("{" + key + ":" + value + "}");
           } else {
-            return ("{\"Key\":\"null\",\"Value\":null\"}");
+            return ("{\"Key\":null}");
           }
         })
         .collect(Collectors.joining(",", "[", "]"))
@@ -282,7 +283,7 @@ public class ServeCommon {
 
   // This can be called from then()
   public static void updateDBWithStringR2DBC(String value) {
-    System.out.println("updateDBWithStringR2DBC");
+    // System.out.println("updateDBWithStringR2DBC");
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
       System.out.println("updateDBWithStringR2DBC Adding Fortune: " + value);
       FortuneDatabaseR2DBC.addFortune(value);
@@ -411,11 +412,26 @@ public class ServeCommon {
     Mono<String> convertMonoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringString
     );
+    // A Mono<String> of json data
+    /*
     Mono<String> returnMonoString = convertMonoMapString.flatMap(
       ServeCommon::doFilter
     );
     return returnMonoString;
     // .filter(ServeCommon::doFilter2);
+    */
+    Flux<String> fluxString2 = doConvertJSONToValues(convertMonoMapString);
+    //);
+    // fluxString.subscribe();
+
+    // Does not matter if there is a waiter. It never invokes flatMap here or in doConvertJSONToValues
+    // next() had no effect either
+    Flux<String> dbFlux = fluxString2.flatMap(s -> {
+      updateDBWithStringR2DBC(s);
+      return Flux.just("");
+    });
+    Mono<String> waiter = dbFlux.last("");
+    return waiter;
   }
 
   // Functions for maps
@@ -515,13 +531,15 @@ public class ServeCommon {
   public static Flux<String> doConvertJSONToValues(String result) {
     System.out.println("doConvertJSONToValues - String -> Flux");
 
+    // Just so we know what we are parsing
+    System.out.println(result);
     // Do not waste time parsing the impossible
     // [{"":""}]
     if (result.length() > 8) {
       try {
         // First convert the json string to an object
         // Then convert the List of Maps to only map values
-        System.out.println("parse result");
+        // System.out.println("parse result");
         List<Map<String, String>> returnValue = new ObjectMapper()
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
 

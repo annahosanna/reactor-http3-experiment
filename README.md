@@ -12,6 +12,15 @@
 
 ## Summary
 
+- The following methods are supported:
+  - Get with Content-Type or Accept text/html returns a regular web page
+  - Get with Content-Type or Accept application/json returns a JSON object `<List<Map<String,String>>>`
+    - This only returns a single fortune
+  - Post with Content-Type x-www-form-urlencoded expects URL encoded (percent escaped) data
+    - Post has the shortcoming that it cannot distinguish `"1"` vs. `1` or `""` vs. `null`
+    - Multiple fortunes can be added in a single request this way
+  - Put with Content-Type application/json excepts a JSON object `<List<Map<String,String>>>`
+    - Multiple fortunes can be added in a single request this way
 - POST workflow is to get the form parameters into a `Mono<String>` then to split those encoded form parameters into a `Flux<String>` where each parameter is decoded and validated, then recombine them into a `Mono<String>` in the JSON form of `List<Map<String,String>>` for easy processing (A list of key/value pairs).
 - The GET routes and non blocking servers are mostly derived from the examples below. The most significant work is the POST handling logic and this readme.(and the research)
 - This program creates HTTP/1.1, HTTP/2, and HTTP/3 servers. Each server in turn produces headers to encourage the browser to switch to HTTPS and HTTP/3. (Such as redirect port 80 to 443, and set Alt-Svc ma for h2 to 1 sec)

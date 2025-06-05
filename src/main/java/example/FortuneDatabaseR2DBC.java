@@ -144,12 +144,9 @@ public class FortuneDatabaseR2DBC {
 
   public static void addFortune(Map<String, String> fortune) {
     // System.out.println("Adding fortune - via map");
-    HashMap<String, String> fortuneHashMap = new HashMap<String, String>(
-      fortune
-    );
-    String[] fortunes = fortuneHashMap.values().toArray(new String[0]);
-    for (int i = 0; i < fortunes.length; i++) {
-      addFortune(fortunes[i]);
+
+    for (Map.Entry<String, String> entry : fortune.entrySet()) {
+      addFortune(entry.getValue());
     }
   }
 
