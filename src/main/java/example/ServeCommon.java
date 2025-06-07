@@ -58,9 +58,8 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> responseContent = Mono.just(responseText());
+    Mono<String> responseContent = Mono.just(htmlResponse(""));
     response.header("content-type", "text/html");
-    // response.header("content-length", Integer.toString(imageText.length()));
     response.header(
       "alt-svc",
       "h3=\":443\"; ma=2592000; persist=1, h2=\":443\" ma=1"
