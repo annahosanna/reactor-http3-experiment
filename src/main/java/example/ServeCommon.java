@@ -191,20 +191,28 @@ public class ServeCommon {
     );
   }
 
+  // public static Flux<Map.Entry<String, String>> displayHeaders(<Map.Entry<String, String>>element) {
+  public static Flux<Map.Entry<String, String>> displayHeaders(
+    Map.Entry<String, String> element
+  ) {
+    String key = element.getKey();
+    String value = element.getValue();
+    System.out.println("Key: " + key + ", Value: " + value);
+    return (Flux.just(element));
+  }
+
   public static Mono<String> responseTextR2DBC(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    for (Map.Entry<String, String> element : request
-      .requestHeaders()
-      .entries()) {
-      String key = element.getKey();
-      String value = element.getValue();
-      System.out.println("Key: " + key + ", Value: " + value);
-    }
+    Flux<Map.Entry<String, String>> headerFlux = Flux.fromIterable(
+      request.requestHeaders().entries()
+    ).flatMap(ServeCommon::displayHeaders);
+    headerFlux.subscribe();
 
     Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
       .subscribeOn(Schedulers.boundedElastic());
+    // This could be a mono if I knew how to modify response and return a string
     if (
       ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
         (request
@@ -228,13 +236,7 @@ public class ServeCommon {
       response.status(200);
 
       Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-        return (
-          Mono.just(
-            "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
-            fortune +
-            "<br/><br/><form action=\"/fortune\" method=\"POST\"><div><label for=\"fortune\">Add a fortune</label><input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" /></div><div><button type=\"submit\">Send request</button></div></form></body></html>"
-          )
-        );
+        return (Mono.just(htmlResponse(fortune)));
       });
       return createResponseText;
     } else if (
@@ -332,76 +334,60 @@ public class ServeCommon {
     return Flux.empty();
   }
 
-  public static String doConvertJSONToValue(String result) {
+  public static Mono<String> doConvertJSONToValue(String result) {
     String key = new String();
     String value = new String();
-    if (result.length() > 2) {
+    if (result.length() > 8) {
       try {
         List<Map<String, String>> pojo = new ObjectMapper()
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+        System.out.println("JSON value: " + result);
         // Just read one object
         Map<String, String> map = pojo.iterator().next();
         key = map.get("Key");
         value = map.get("Value");
+        return (Mono.just(result));
       } catch (Exception e) {
         e.printStackTrace();
-        if (result.length() > 0) {
-          String[] ss = result.split(",");
-          String[] sc = ss[0].split(":");
-          key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-          value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-        }
       }
     }
-    return (value);
+    return (Mono.empty());
   }
 
   // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
   // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
   public static Mono<String> doFilter(String result) {
-    System.out.println("JSON value: " + result);
-    Mono<String> valueOnly = (doConvertJSONToValue(result) == null)
-      ? Mono.empty()
-      : Mono.just(doConvertJSONToValue(result));
-
-    //updateDBWithString(value);
-    valueOnly
-      .flatMap(value -> {
-        updateDBWithStringR2DBC(value);
-        return Mono.empty();
-      })
-      .subscribe();
-
-    if (result == null) {
-      return Mono.empty();
-    }
-    return Mono.just(result);
+    Mono<String> valueOnly = doConvertJSONToValue(result);
+    return valueOnly.flatMap(value -> {
+      updateDBWithStringR2DBC(value);
+      return Mono.just(value);
+    });
   }
 
-  public static boolean doFilter2(String result) {
-    System.out.println("JSON value: " + result);
-    String key = new String();
-    String value = new String();
-    try {
-      List<Map<String, String>> pojo = new ObjectMapper()
-        .readValue(result, new TypeReference<List<Map<String, String>>>() {});
-      Map<String, String> map = pojo.iterator().next();
-      key = map.get("Key");
-      value = map.get("Value");
-    } catch (Exception e) {
-      e.printStackTrace();
-      if (result.length() > 0) {
-        String[] ss = result.split(",");
-        String[] sc = ss[0].split(":");
-        key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-        value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-      }
-    }
+  // public static boolean doFilter2(String result) {
+  //   System.out.println("JSON value: " + result);
+  //   String key = new String();
+  //   String value = new String();
+  //   try {
+  //     List<Map<String, String>> pojo = new ObjectMapper()
+  //       .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+  //     Map<String, String> map = pojo.iterator().next();
+  //     key = map.get("Key");
+  //     value = map.get("Value");
+  //   } catch (Exception e) {
+  //     e.printStackTrace();
+  //     if (result.length() > 0) {
+  //       String[] ss = result.split(",");
+  //       String[] sc = ss[0].split(":");
+  //       key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+  //       value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
+  //     }
+  //   }
 
-    updateDBWithString(value);
+  //   updateDBWithString(value);
 
-    return true;
-  }
+  //   return true;
+  // }
 
   public static Mono<String> getFormData(
     HttpServerRequest request,
@@ -433,6 +419,7 @@ public class ServeCommon {
       );
     }
     Mono<String> rawMonoString = getMonoString(request, response);
+    // validate/scrub form data string and return k=v flux
     Flux<String> fluxString = convertMonoToFlux(rawMonoString);
     Mono<Map<String, String>> monoMapStringString = fluxString.collectMap(
       ServeCommon::getFormParamName,
@@ -627,5 +614,37 @@ public class ServeCommon {
     });
     Mono<String> waiter = dbFlux.last("");
     return waiter;
+  }
+
+  public static String htmlResponse(String fortune) {
+    String htmlHeader =
+      """
+      <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <link rel=\"icon\" href=\"data:,\"/>
+          </head>
+        <body>
+          <p>
+            <a href=\"/fortune\">Your fortune:</a>
+      """;
+    String htmlFooter =
+      """
+          </p>
+          <p>
+            <form action=\"/fortune\" method=\"POST\">
+              <label for=\"fortune\">Add a fortune</label>
+              <input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" />
+            </p>
+            <p>
+              <button type=\"submit\">Send request</button>
+            </p>
+          </form>
+        </body>
+      </html>
+      """;
+    String finalHtml = htmlHeader + fortune + htmlFooter;
+    return finalHtml;
   }
 }
