@@ -36,7 +36,8 @@ public final class ReactorHttp3Experiment {
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp11::processPostV11)
           .put("/fortune", ServeHttp11::processRestPutV11)
-          .get("*", ServeCommon::returnDefaultRoute)
+          .get("/robots.txt", ServeCommon::returnRobotsTxt)
+          .get("**", ServeCommon::returnDefaultRoute)
       )
       .bindNow();
 
@@ -63,7 +64,8 @@ public final class ReactorHttp3Experiment {
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp2::processPostV2)
           .put("/fortune", ServeHttp2::processPutV2)
-          .get("*", ServeCommon::returnDefaultRoute)
+          .get("/robots.txt", ServeCommon::returnRobotsTxt)
+          .get("**", ServeCommon::returnDefaultRoute)
       )
       .bindNow();
 
@@ -99,7 +101,8 @@ public final class ReactorHttp3Experiment {
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp3::processPostV3)
           .put("/fortune", ServeHttp3::processPutV3)
-          .get("*", ServeCommon::returnDefaultRoute)
+          .get("/robots.txt", ServeCommon::returnRobotsTxt)
+          .get("**", ServeCommon::returnDefaultRoute)
       )
       .bindNow();
 

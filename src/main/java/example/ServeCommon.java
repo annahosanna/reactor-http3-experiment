@@ -44,6 +44,16 @@ public class ServeCommon {
     return response.sendString(responseContent);
   }
 
+  public static NettyOutbound returnRobotsTxt(
+    HttpServerRequest request,
+    HttpServerResponse response
+  ) {
+    Mono<String> responseContent = Mono.just("User-Agent: *\nDisallow: *\n");
+    response.header("content-type", "text/plain");
+    response.status(200);
+    return response.sendString(responseContent);
+  }
+
   public static NettyOutbound returnDefaultRoute(
     HttpServerRequest request,
     HttpServerResponse response
