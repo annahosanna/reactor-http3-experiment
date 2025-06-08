@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Irregular Form Navigation Detection</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  .alert { color: red; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<form id="myForm">
+  <label>
+    First Name: <input type="text" name="firstName" />
+  </label><br /><br />
+  <label>
+    Last Name: <input type="text" name="lastName" />
+  </label><br /><br />
+  <label>
+    Email: <input type="email" name="email" />
+  </label><br /><br />
+  <label>
+    Phone: <input type="tel" name="phone" />
+  </label><br /><br />
+</form>
+
+<div id="alerts"></div>
+
+<script>
+(() => {
+  const form = document.getElementById('myForm');
+  const fields = Array.from(form.elements).filter(el => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+  const alertsDiv = document.getElementById('alerts');
+
+  let focusOrder = [];  // records {name, index, timestamp}
+  let lastFocusIndex = -1;
+  let lastFocusTime = 0;
+  const MAX_PAUSE = 30000; // 30 seconds pause considered irregular
+  const MAX_JUMP_BACK = 2; // jump back by more than 2 fields is irregular
+
+  function addAlert(message) {
+    const p = document.createElement('p');
+    p.textContent = message;
+    p.className = 'alert';
+    alertsDiv.appendChild(p);
+  }
+
+  function clearAlerts() {
+    alertsDiv.innerHTML = '';
+  }
+
+  form.addEventListener('focusin', e => {
+    const target = e.target;
+    const index = fields.indexOf(target);
+    if (index === -1) return;
+
+    const now = Date.now();
+    focusOrder.push({ name: target.name, index, timestamp: now });
+
+    // Check for irregular navigation:
+    clearAlerts();
+
+    // 1. Non-sequential jump back detection
+    if (lastFocusIndex !== -1) {
+      const diff = index - lastFocusIndex;
+
+      if (diff < 0 && Math.abs(diff) > MAX_JUMP_BACK) {
+        addAlert(`Irregular navigation: jumped back by ${Math.abs(diff)} fields (from ${fields[lastFocusIndex].name} to ${target.name})`);
+      }
+    }
+
+    // 2. Large pause detection
+    if (lastFocusTime !== 0) {
+      const pause = now - lastFocusTime;
+      if (pause > MAX_PAUSE) {
+        addAlert(`Irregular navigation: pause of ${(pause / 1000).toFixed(1)} seconds before focusing on ${target.name}`);
+      }
+    }
+
+    // 3. Excessive revisits detection (field focused > 3 times)
+    const visits = focusOrder.filter(f => f.index === index).length;
+    if (visits > 3) {
+      addAlert(`Irregular navigation: field "${target.name}" focused ${visits} times`);
+    }
+
+    lastFocusIndex = index;
+    lastFocusTime = now;
+  });
+})();
+</script>
+
+</body>
+</html>

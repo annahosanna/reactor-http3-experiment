@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Form with Metadata Tracking</title>
+  <style>
+    body { height: 2000px; padding: 2rem; font-family: sans-serif; }
+    form { position: relative; z-index: 10; background: #f9f9f9; padding: 1rem; max-width: 400px; }
+    input { margin: 0.5rem 0; width: 100%; }
+  </style>
+</head>
+<body>
+
+<h2>User Feedback Form</h2>
+<form id="userForm">
+  <label>Name:<input type="text" name="name" /></label><br>
+  <label>Email:<input type="email" name="email" /></label><br>
+  <label>Comments:<textarea name="comments"></textarea></label><br>
+  <button type="submit">Submit</button>
+</form>
+
+<script>
+  const metadata = {
+    fields: {},
+    session: {
+      startTime: Date.now(),
+      mouseMoves: 0,
+      mousePath: [],
+      maxScrollDepth: 0
+    }
+  };
+
+  // Track field-specific events
+  document.querySelectorAll('#userForm input, #userForm textarea').forEach(input => {
+    const field = input.name;
+    metadata.fields[field] = {
+      keystrokes: 0,
+      backspaces: 0,
+      pasteDetected: false,
+      focusTime: null,
+      blurTime: null,
+      totalTime: 0,
+      changes: 0
+    };
+
+    input.addEventListener('focus', () => {
+      metadata.fields[field].focusTime = Date.now();
+    });
+
+    input.addEventListener('blur', () => {
+      const now = Date.now();
+      metadata.fields[field].blurTime = now;
+      if (metadata.fields[field].focusTime) {
+        metadata.fields[field].totalTime += now - metadata.fields[field].focusTime;
+      }
+    });
+
+    input.addEventListener('keydown', (e) => {
+      metadata.fields[field].keystrokes++;
+      if (e.key === "Backspace") {
+        metadata.fields[field].backspaces++;
+      }
+    });
+
+    input.addEventListener('input', () => {
+      metadata.fields[field].changes++;
+    });
+
+    input.addEventListener('paste', () => {
+      metadata.fields[field].pasteDetected = true;
+    });
+  });
+
+  // Track mouse movement
+  document.addEventListener('mousemove', (e) => {
+    metadata.session.mouseMoves++;
+    if (metadata.session.mouseMoves % 50 === 0) {
+      metadata.session.mousePath.push({ x: e.clientX, y: e.clientY, time: Date.now() });
+    }
+  });
+
+  // Track scroll depth
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY + window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight;
+    const percent = Math.round((scrolled / docHeight) * 100);
+    if (percent > metadata.session.maxScrollDepth) {
+      metadata.session.maxScrollDepth = percent;
+    }
+  });
+
+  // Handle form submit
+  document.getElementById('userForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    // Add session end time
+    metadata.session.endTime = Date.now();
+    metadata.session.totalDuration = metadata.session.endTime - metadata.session.startTime;
+
+    // Combine with form data
+    const formData = Object.fromEntries(new FormData(this));
+    const payload = {
+      formData,
+      metadata
+    };
+
+    console.log('Sending to server:', payload);
+
+    // Send to server
+    fetch('https://your-server.com/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(response => {
+      alert('Form submitted successfully!');
+      console.log('Server response:', response);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('There was an error submitting the form.');
+    });
+  });
+</script>
+
+</body>
+</html>

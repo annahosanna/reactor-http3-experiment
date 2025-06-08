@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mouse Jitter Detection</title>
+<style>
+  body, html { margin: 0; height: 100%; overflow: hidden; background: #111; color: #ddd; font-family: monospace; }
+  canvas { background: #222; display: block; }
+  #stats { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; max-width: 300px; }
+  .jitter { color: #f90; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="stats">Move your mouse...</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const stats = document.getElementById('stats');
+
+  let width, height;
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  let mouseX = 0, mouseY = 0;
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  let lastSample = null;
+  let lastAngle = null;
+  const vectors = [];
+
+  // Parameters for jitter detection
+  const JITTER_DISTANCE_THRESHOLD = 3; // pixels
+  const JITTER_ANGLE_THRESHOLD = 90;   // degrees
+  const JITTER_WINDOW_MS = 1000;        // analyze jitter within last 1 second
+
+  setInterval(() => {
+    const now = Date.now();
+    const current = { x: mouseX, y: mouseY, timestamp: now };
+
+    if (lastSample) {
+      const dx = current.x - lastSample.x;
+      const dy = current.y - lastSample.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const duration = current.timestamp - lastSample.timestamp || 1;
+      if (distance > 0) {
+        const angle = Math.atan2(dy, dx);
+        let angularChange = null;
+        if (lastAngle !== null) {
+          let diff = Math.abs((angle - lastAngle) * (180 / Math.PI));
+          if (diff > 180) diff = 360 - diff;
+          angularChange = diff;
+        }
+
+        const vector = {
+          startX: lastSample.x,
+          startY: lastSample.y,
+          endX: current.x,
+          endY: current.y,
+          dx, dy,
+          distance,
+          angle,
+          angularChange,
+          timestampStart: lastSample.timestamp,
+          timestampEnd: current.timestamp,
+          duration
+        };
+        vectors.push(vector);
+        lastAngle = angle;
+      }
+    }
+
+    lastSample = current;
+
+    // Detect jitter over recent vectors
+    const cutoff = now - JITTER_WINDOW_MS;
+    const recentVectors = vectors.filter(v => v.timestampEnd >= cutoff);
+
+    // Jitter = many small, sharp direction changes
+    const jitterVectors = recentVectors.filter(v =>
+      v.distance < JITTER_DISTANCE_THRESHOLD &&
+      v.angularChange !== null &&
+      v.angularChange > JITTER_ANGLE_THRESHOLD
+    );
+
+    const jitterDetected = jitterVectors.length >= 3; // e.g. 3+ jittery moves in window
+
+    draw(jitterDetected, jitterVectors);
+    updateStats(jitterDetected, jitterVectors.length);
+  }, 100);
+
+  function draw(jitterDetected, jitterVectors) {
+    ctx.clearRect(0, 0, width, height);
+
+    vectors.forEach(v => {
+      // Default color
+      let color = 'lime';
+      if (jitterVectors.includes(v)) {
+        color = '#f90'; // orange for jittery vectors
+      }
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(v.startX, v.startY);
+      ctx.lineTo(v.endX, v.endY);
+      ctx.stroke();
+
+      const headLength = 8;
+      const angle = v.angle;
+      const x = v.endX;
+      const y = v.endY;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - headLength * Math.cos(angle - Math.PI / 6), y - headLength * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x - headLength * Math.cos(angle + Math.PI / 6), y - headLength * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    if (jitterDetected) {
+      ctx.font = '48px monospace';
+      ctx.fillStyle = '#f90';
+      ctx.fillText('JITTER DETECTED', 20, 60);
+    }
+  }
+
+  function updateStats(jitterDetected, jitterCount) {
+    stats.innerHTML = `
+      <div>Vectors recorded: ${vectors.length}</div>
+      <div class="${jitterDetected ? 'jitter' : ''}">
+        Jittery movements (last 1s): ${jitterCount}
+      </div>
+    `;
+  }
+
+  // Optionally clean old vectors to save memory
+  setInterval(() => {
+    const cutoff = Date.now() - 60000; // older than 60s
+    while (vectors.length && vectors[0].timestampEnd < cutoff) {
+      vectors.shift();
+    }
+  }, 5000);
+
+})();
+</script>
+
+</body>
+</html>

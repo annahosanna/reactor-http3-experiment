@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Keyboard Entry Jitter Detection</title>
+<style>
+  body { font-family: monospace; background: #111; color: #ddd; padding: 20px; }
+  #log { margin-top: 20px; max-width: 600px; white-space: pre-wrap; }
+  .jitter { color: #f90; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h2>Type something (try quick repeats or irregular timing):</h2>
+<textarea id="input" rows="6" cols="60" autofocus></textarea>
+
+<div id="log">Waiting for input...</div>
+
+<script>
+(() => {
+  const input = document.getElementById('input');
+  const log = document.getElementById('log');
+
+  const keyEvents = []; // store {key, timestamp, type}
+
+  // Thresholds for jitter detection (ms)
+  const MIN_INTERVAL = 50;  // very fast repeat threshold
+  const MAX_JITTER = 100;   // high variability threshold in ms
+
+  function getInterKeyIntervals(events) {
+    const intervals = [];
+    for (let i = 1; i < events.length; i++) {
+      intervals.push(events[i].timestamp - events[i-1].timestamp);
+    }
+    return intervals;
+  }
+
+  function analyzeJitter() {
+    if (keyEvents.length < 5) return false;
+
+    // Get last 5 keydown events
+    const lastFive = keyEvents.filter(e => e.type === 'keydown').slice(-5);
+    if (lastFive.length < 5) return false;
+
+    const intervals = getInterKeyIntervals(lastFive);
+
+    // Check for very fast repeats (intervals < MIN_INTERVAL)
+    const hasFastRepeats = intervals.some(i => i < MIN_INTERVAL);
+
+    // Check variability in intervals (jitter)
+    const mean = intervals.reduce((a,b) => a+b, 0) / intervals.length;
+    const variance = intervals.reduce((a,b) => a + (b - mean)**2, 0) / intervals.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Consider jitter detected if stdDev is high
+    const hasHighJitter = stdDev > MAX_JITTER;
+
+    return hasFastRepeats || hasHighJitter;
+  }
+
+  function updateLog() {
+    if (keyEvents.length === 0) {
+      log.textContent = 'Waiting for input...';
+      return;
+    }
+
+    const lastEvent = keyEvents[keyEvents.length -1];
+    const jitterDetected = analyzeJitter();
+
+    log.innerHTML = `
+      Last key: "${lastEvent.key}" (${lastEvent.type}) at ${lastEvent.timestamp} ms<br>
+      Jitter detected: <span class="${jitterDetected ? 'jitter' : ''}">${jitterDetected ? 'YES' : 'NO'}</span><br>
+      Recorded key events: ${keyEvents.length}
+    `;
+  }
+
+  input.addEventListener('keydown', e => {
+    keyEvents.push({ key: e.key, timestamp: Date.now(), type: 'keydown' });
+    updateLog();
+  });
+
+  input.addEventListener('keyup', e => {
+    keyEvents.push({ key: e.key, timestamp: Date.now(), type: 'keyup' });
+  });
+})();
+</script>
+
+</body>
+</html>

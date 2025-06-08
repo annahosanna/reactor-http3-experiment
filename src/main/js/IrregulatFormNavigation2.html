@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Extended Irregular Form Navigation Detection</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  .alert { color: red; font-weight: bold; }
+  #log { margin-top: 20px; white-space: pre-wrap; background: #f4f4f4; padding: 10px; max-height: 200px; overflow-y: auto; }
+  button { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<form id="myForm">
+  <label>
+    First Name: <input type="text" name="firstName" autocomplete="off" />
+  </label><br /><br />
+  <label>
+    Last Name: <input type="text" name="lastName" autocomplete="off" />
+  </label><br /><br />
+  <label>
+    Email: <input type="email" name="email" autocomplete="off" />
+  </label><br /><br />
+  <label>
+    Phone: <input type="tel" name="phone" autocomplete="off" />
+  </label><br /><br />
+  <button type="button" id="showReport">Show Navigation Report</button>
+</form>
+
+<div id="alerts"></div>
+<pre id="log"></pre>
+
+<script>
+(() => {
+  const form = document.getElementById('myForm');
+  const fields = Array.from(form.elements).filter(el => ['INPUT','TEXTAREA','SELECT'].includes(el.tagName));
+  const alertsDiv = document.getElementById('alerts');
+  const logDiv = document.getElementById('log');
+  const showReportBtn = document.getElementById('showReport');
+
+  // Configuration thresholds
+  const MAX_PAUSE = 30000;       // 30 sec pause between fields
+  const MAX_JUMP_BACK = 2;       // More than 2 fields backward jump is irregular
+  const MAX_JUMP_FORWARD = 3;    // More than 3 fields skipped forward is irregular
+  const MAX_REVISITS = 3;        // More than 3 visits to same field is irregular
+
+  // Tracking data
+  let focusHistory = []; // { name, index, focusTime, blurTime, duration }
+  let currentFocus = null;
+  let lastFocusIndex = -1;
+  let lastFocusTimestamp = 0;
+
+  function addAlert(message) {
+    const p = document.createElement('p');
+    p.textContent = message;
+    p.className = 'alert';
+    alertsDiv.appendChild(p);
+  }
+
+  function clearAlerts() {
+    alertsDiv.innerHTML = '';
+  }
+
+  function logMessage(message) {
+    logDiv.textContent += message + '\n';
+    logDiv.scrollTop = logDiv.scrollHeight;
+  }
+
+  function analyzeNavigation(index, timestamp) {
+    clearAlerts();
+
+    if (lastFocusIndex !== -1) {
+      const diff = index - lastFocusIndex;
+
+      if (diff < 0 && Math.abs(diff) > MAX_JUMP_BACK) {
+        addAlert(`Irregular navigation: jumped backward by ${Math.abs(diff)} fields (from "${fields[lastFocusIndex].name}" to "${fields[index].name}")`);
+      } else if (diff > 0 && diff > MAX_JUMP_FORWARD) {
+        addAlert(`Irregular navigation: skipped forward ${diff} fields (from "${fields[lastFocusIndex].name}" to "${fields[index].name}")`);
+      }
+
+      const pause = timestamp - lastFocusTimestamp;
+      if (pause > MAX_PAUSE) {
+        addAlert(`Irregular navigation: pause of ${(pause/1000).toFixed(1)} seconds before focusing on "${fields[index].name}"`);
+      }
+    }
+
+    // Count revisits for current field
+    const visits = focusHistory.filter(f => f.index === index).length + 1; // +1 for current focus
+    if (visits > MAX_REVISITS) {
+      addAlert(`Irregular navigation: field "${fields[index].name}" focused ${visits} times`);
+    }
+  }
+
+  function startFocus(target) {
+    const index = fields.indexOf(target);
+    if (index === -1) return;
+
+    const now = Date.now();
+    analyzeNavigation(index, now);
+
+    // Record blur time for previous focused field
+    if (currentFocus) {
+      currentFocus.blurTime = now;
+      currentFocus.duration = currentFocus.blurTime - currentFocus.focusTime;
+      logMessage(`Field "${currentFocus.name}" blurred after ${(currentFocus.duration / 1000).toFixed(2)}s`);
+    }
+
+    currentFocus = {
+      name: target.name,
+      index,
+      focusTime: now,
+      blurTime: null,
+      duration: null
+    };
+
+    focusHistory.push(currentFocus);
+    lastFocusIndex = index;
+    lastFocusTimestamp = now;
+
+    logMessage(`Focused on "${target.name}"`);
+  }
+
+  function endFocus(target) {
+    const now = Date.now();
+    if (currentFocus && currentFocus.name === target.name && !currentFocus.blurTime) {
+      currentFocus.blurTime = now;
+      currentFocus.duration = currentFocus.blurTime - currentFocus.focusTime;
+      logMessage(`Field "${target.name}" blurred after ${(currentFocus.duration / 1000).toFixed(2)}s`);
+    }
+  }
+
+  form.addEventListener('focusin', e => {
+    startFocus(e.target);
+  });
+
+  form.addEventListener('focusout', e => {
+    endFocus(e.target);
+  });
+
+  showReportBtn.addEventListener('click', () => {
+    clearAlerts();
+
+    if (currentFocus && !currentFocus.blurTime) {
+      // Close last field duration if still focused
+      currentFocus.blurTime = Date.now();
+      currentFocus.duration = currentFocus.blurTime - currentFocus.focusTime;
+    }
+
+    if (focusHistory.length === 0) {
+      alert('No navigation data collected.');
+      return;
+    }
+
+    // Generate summary report
+    let report = '--- Navigation Report ---\n';
+    report += `Total fields visited: ${focusHistory.length}\n`;
+    report += 'Field visit durations (seconds):\n';
+
+    focusHistory.forEach((f, i) => {
+      report += ` ${i+1}. ${f.name}: ${f.duration ? (f.duration/1000).toFixed(2) : 'N/A'}s\n`;
+    });
+
+    // Example: send data to server (uncomment and replace URL)
+    /*
+    fetch('https://your-server.com/api/navigation', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ focusHistory })
+    }).then(res => console.log('Data sent to server', res))
+      .catch(err => console.error('Error sending data', err));
+    */
+
+    logDiv.textContent = report;
+  });
+
+})();
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Extended Irregular Form Navigation Detection</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  .alert { color: red; font-weight: bold; }
+  #log { margin-top: 20px; white-space: pre-wrap; background: #f4f4f4; padding: 10px; max-height: 200px; overflow-y: auto; }
+  button { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<form id="myForm">
+  <label>
+    First Name: <input type="text" name="firstName" autocomplete="off" />
+  </label><br /><br />
+  <label>
+    Last Name: <input type="text" name="lastName" autocomplete="off" />
+  </label><br /><br />
+  <label>
+    Email: <input type="email" name="email" autocomplete="off" />
+  </label><br /><br />
+  <label>
+    Phone: <input type="tel" name="phone" autocomplete="off" />
+  </label><br /><br />
+  <button type="button" id="showReport">Show Navigation Report</button>
+</form>
+
+<div id="alerts"></div>
+<pre id="log"></pre>
+
+<script>
+(() => {
+  const form = document.getElementById('myForm');
+  const fields = Array.from(form.elements).filter(el => ['INPUT','TEXTAREA','SELECT'].includes(el.tagName));
+  const alertsDiv = document.getElementById('alerts');
+  const logDiv = document.getElementById('log');
+  const showReportBtn = document.getElementById('showReport');
+
+  // Configuration thresholds
+  const MAX_PAUSE = 30000;       // 30 sec pause between fields
+  const MAX_JUMP_BACK = 2;       // More than 2 fields backward jump is irregular
+  const MAX_JUMP_FORWARD = 3;    // More than 3 fields skipped forward is irregular
+  const MAX_REVISITS = 3;        // More than 3 visits to same field is irregular
+
+  // Tracking data
+  let focusHistory = []; // { name, index, focusTime, blurTime, duration }
+  let currentFocus = null;
+  let lastFocusIndex = -1;
+  let lastFocusTimestamp = 0;
+
+  function addAlert(message) {
+    const p = document.createElement('p');
+    p.textContent = message;
+    p.className = 'alert';
+    alertsDiv.appendChild(p);
+  }
+
+  function clearAlerts() {
+    alertsDiv.innerHTML = '';
+  }
+
+  function logMessage(message) {
+    logDiv.textContent += message + '\n';
+    logDiv.scrollTop = logDiv.scrollHeight;
+  }
+
+  function analyzeNavigation(index, timestamp) {
+    clearAlerts();
+
+    if (lastFocusIndex !== -1) {
+      const diff = index - lastFocusIndex;
+
+      if (diff < 0 && Math.abs(diff) > MAX_JUMP_BACK) {
+        addAlert(`Irregular navigation: jumped backward by ${Math.abs(diff)} fields (from "${fields[lastFocusIndex].name}" to "${fields[index].name}")`);
+      } else if (diff > 0 && diff > MAX_JUMP_FORWARD) {
+        addAlert(`Irregular navigation: skipped forward ${diff} fields (from "${fields[lastFocusIndex].name}" to "${fields[index].name}")`);
+      }
+
+      const pause = timestamp - lastFocusTimestamp;
+      if (pause > MAX_PAUSE) {
+        addAlert(`Irregular navigation: pause of ${(pause/1000).toFixed(1)} seconds before focusing on "${fields[index].name}"`);
+      }
+    }
+
+    // Count revisits for current field
+    const visits = focusHistory.filter(f => f.index === index).length + 1; // +1 for current focus
+    if (visits > MAX_REVISITS) {
+      addAlert(`Irregular navigation: field "${fields[index].name}" focused ${visits} times`);
+    }
+  }
+
+  function startFocus(target) {
+    const index = fields.indexOf(target);
+    if (index === -1) return;
+
+    const now = Date.now();
+    analyzeNavigation(index, now);
+
+    // Record blur time for previous focused field
+    if (currentFocus) {
+      currentFocus.blurTime = now;
+      currentFocus.duration = currentFocus.blurTime - currentFocus.focusTime;
+      logMessage(`Field "${currentFocus.name}" blurred after ${(currentFocus.duration / 1000).toFixed(2)}s`);
+    }
+
+    currentFocus = {
+      name: target.name,
+      index,
+      focusTime: now,
+      blurTime: null,
+      duration: null
+    };
+
+    focusHistory.push(currentFocus);
+    lastFocusIndex = index;
+    lastFocusTimestamp = now;
+
+    logMessage(`Focused on "${target.name}"`);
+  }
+
+  function endFocus(target) {
+    const now = Date.now();
+    if (currentFocus && currentFocus.name === target.name && !currentFocus.blurTime) {
+      currentFocus.blurTime = now;
+      currentFocus.duration = currentFocus.blurTime - currentFocus.focusTime;
+      logMessage(`Field "${target.name}" blurred after ${(currentFocus.duration / 1000).toFixed(2)}s`);
+    }
+  }
+
+  form.addEventListener('focusin', e => {
+    startFocus(e.target);
+  });
+
+  form.addEventListener('focusout', e => {
+    endFocus(e.target);
+  });
+
+  showReportBtn.addEventListener('click', () => {
+    clearAlerts();
+
+    if (currentFocus && !currentFocus.blurTime) {
+      // Close last field duration if still focused
+      currentFocus.blurTime = Date.now();
+      currentFocus.duration = currentFocus.blurTime - currentFocus.focusTime;
+    }
+
+    if (focusHistory.length === 0) {
+      alert('No navigation data collected.');
+      return;
+    }
+
+    // Generate summary report
+    let report = '--- Navigation Report ---\n';
+    report += `Total fields visited: ${focusHistory.length}\n`;
+    report += 'Field visit durations (seconds):\n';
+
+    focusHistory.forEach((f, i) => {
+      report += ` ${i+1}. ${f.name}: ${f.duration ? (f.duration/1000).toFixed(2) : 'N/A'}s\n`;
+    });
+
+    // Example: send data to server (uncomment and replace URL)
+    /*
+    fetch('https://your-server.com/api/navigation', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ focusHistory })
+    }).then(res => console.log('Data sent to server', res))
+      .catch(err => console.error('Error sending data', err));
+    */
+
+    logDiv.textContent = report;
+  });
+
+})();
+</script>
+
+</body>
+</html>

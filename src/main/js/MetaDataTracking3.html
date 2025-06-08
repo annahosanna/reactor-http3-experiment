@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Keystroke Biometrics Example</title>
+  <style>
+    input { font-size: 1rem; width: 300px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+
+<h2>Enter Email:</h2>
+<input type="text" id="emailInput" name="email" />
+
+<pre id="output"></pre>
+
+<script>
+  const input = document.getElementById('emailInput');
+  const output = document.getElementById('output');
+
+  let keyEvents = [];
+  let keyDownTimestamps = {};
+  let previousKeyUpTime = null;
+  let sessionStart = null;
+
+  input.addEventListener('keydown', (e) => {
+    if (!sessionStart) sessionStart = performance.now();
+    keyDownTimestamps[e.code] = performance.now();
+  });
+
+  input.addEventListener('keyup', (e) => {
+    const now = performance.now();
+    const downTime = keyDownTimestamps[e.code] || now;
+    const dwellTime = now - downTime;
+    const flightTime = previousKeyUpTime ? downTime - previousKeyUpTime : 0;
+
+    keyEvents.push({
+      key: e.key,
+      code: e.code,
+      dwell: Math.round(dwellTime),
+      flight: Math.round(flightTime)
+    });
+
+    previousKeyUpTime = now;
+
+    // Optional: Display as you type
+    output.textContent = JSON.stringify({
+      totalKeystrokes: keyEvents.length,
+      signature: keyEvents,
+      duration: Math.round(now - sessionStart) + " ms"
+    }, null, 2);
+  });
+
+  // Optional: Send to server on blur
+  input.addEventListener('blur', () => {
+    const now = performance.now();
+    const payload = {
+      field: "email",
+      signature: keyEvents,
+      totalTime: Math.round(now - sessionStart),
+      timestamp: new Date().toISOString()
+    };
+
+    fetch('https://your-server.com/api/keystroke-signature', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(response => console.log("Server response:", response))
+    .catch(err => console.error("Error sending keystroke data:", err));
+  });
+</script>
+
+</body>
+</html>

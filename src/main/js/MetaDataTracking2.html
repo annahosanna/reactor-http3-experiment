@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Metadata Tracking Form</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input, textarea { display: block; margin-bottom: 1rem; width: 300px; }
+  </style>
+</head>
+<body>
+
+<h2>Live Tracking Form</h2>
+<form id="liveForm">
+  <label>Name: <input type="text" name="name" /></label>
+  <label>Email: <input type="email" name="email" /></label>
+  <label>Message: <textarea name="message"></textarea></label>
+</form>
+
+<script>
+  const form = document.getElementById('liveForm');
+  const fieldData = {};
+
+  document.querySelectorAll('#liveForm input, #liveForm textarea').forEach(input => {
+    const fieldName = input.name;
+
+    // Initialize tracking object
+    fieldData[fieldName] = {
+      focusTime: null,
+      totalTime: 0,
+      keystrokes: 0,
+      backspaces: 0,
+      pasteDetected: false,
+      value: ""
+    };
+
+    input.addEventListener('focus', () => {
+      fieldData[fieldName].focusTime = Date.now();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      fieldData[fieldName].keystrokes++;
+      if (e.key === "Backspace") {
+        fieldData[fieldName].backspaces++;
+      }
+    });
+
+    input.addEventListener('paste', () => {
+      fieldData[fieldName].pasteDetected = true;
+    });
+
+    input.addEventListener('blur', (e) => {
+      const now = Date.now();
+      if (fieldData[fieldName].focusTime) {
+        fieldData[fieldName].totalTime += now - fieldData[fieldName].focusTime;
+        fieldData[fieldName].focusTime = null; // Reset for future focus
+      }
+
+      fieldData[fieldName].value = e.target.value;
+
+      // Send data to server on blur
+      sendFieldDataToServer(fieldName, fieldData[fieldName]);
+    });
+  });
+
+  function sendFieldDataToServer(fieldName, data) {
+    const payload = {
+      field: fieldName,
+      data,
+      timestamp: new Date().toISOString()
+    };
+
+    fetch('https://your-server.com/api/field-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to send');
+      return res.json();
+    })
+    .then(response => {
+      console.log(`Server response for ${fieldName}:`, response);
+    })
+    .catch(err => {
+      console.error(`Error sending data for ${fieldName}:`, err);
+    });
+  }
+</script>
+
+</body>
+</html>

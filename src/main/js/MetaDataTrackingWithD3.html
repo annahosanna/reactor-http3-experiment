@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Keystroke Metadata Force Graph</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #inputBox { font-size: 1.2rem; width: 300px; padding: 8px; }
+    svg { border: 1px solid #ccc; background: #f9f9f9; }
+    .node circle { fill: steelblue; cursor: pointer; }
+    .node text { pointer-events: none; fill: #333; font-size: 12px; }
+    .link { stroke: #999; stroke-opacity: 0.6; }
+    .tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Keystroke Metadata Force Directed Graph</h2>
+<input id="inputBox" type="text" placeholder="Type here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+
+<svg width="800" height="400"></svg>
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+  const svg = d3.select('svg');
+  const width = +svg.attr('width');
+  const height = +svg.attr('height');
+  const tooltip = d3.select('#tooltip');
+
+  let nodes = [];
+  let links = [];
+
+  // We'll store keydown and keyup timestamps for flight/dwell calculation
+  let keyDownTime = {};
+  let lastKeyUpTime = null;
+  let lastKey = null;
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.flightTimeScaled))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .on("tick", ticked);
+
+  const linkGroup = svg.append("g")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6);
+
+  const nodeGroup = svg.append("g");
+
+  let linkElements = linkGroup.selectAll("line");
+  let nodeElements = nodeGroup.selectAll("g");
+
+  function updateGraph() {
+    // DATA JOIN
+    linkElements = linkGroup.selectAll("line")
+      .data(links, d => d.source.id + "-" + d.target.id);
+
+    linkElements.exit().remove();
+
+    const linkEnter = linkElements.enter()
+      .append("line")
+      .attr("class", "link")
+      .attr("stroke-width", 2)
+      .on("mousemove", (event, d) => {
+        tooltip.style("opacity", 1)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY + 10) + "px")
+          .html(`Flight time: ${d.flightTime} ms`);
+      })
+      .on("mouseout", () => {
+        tooltip.style("opacity", 0);
+      });
+
+    linkElements = linkEnter.merge(linkElements);
+
+    nodeElements = nodeGroup.selectAll("g")
+      .data(nodes, d => d.id);
+
+    nodeElements.exit().remove();
+
+    const nodeEnter = nodeElements.enter()
+      .append("g")
+      .attr("class", "node")
+      .call(drag(simulation));
+
+    nodeEnter.append("circle")
+      .attr("r", 15)
+      .attr("fill", "steelblue")
+      .on("mousemove", (event, d) => {
+        tooltip.style("opacity", 1)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY + 10) + "px")
+          .html(`Key: '${d.id}'`);
+      })
+      .on("mouseout", () => {
+        tooltip.style("opacity", 0);
+      });
+
+    nodeEnter.append("text")
+      .attr("dy", 4)
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .text(d => d.id);
+
+    nodeElements = nodeEnter.merge(nodeElements);
+
+    simulation.nodes(nodes);
+    simulation.force("link").links(links);
+    simulation.alpha(1).restart();
+  }
+
+  function ticked() {
+    linkElements
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    nodeElements.attr("transform", d => `translate(${d.x},${d.y})`);
+  }
+
+  function drag(sim) {
+    function dragstarted(event, d) {
+      if (!event.active) sim.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) sim.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    return d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended);
+  }
+
+  const inputBox = document.getElementById('inputBox');
+
+  inputBox.addEventListener('keydown', (e) => {
+    keyDownTime[e.code] = performance.now();
+  });
+
+  inputBox.addEventListener('keyup', (e) => {
+    const now = performance.now();
+    const dwellTime = now - (keyDownTime[e.code] || now);
+    const flightTime = lastKeyUpTime ? (keyDownTime[e.code] - lastKeyUpTime) : 0;
+
+    lastKeyUpTime = now;
+
+    // Add new node if it doesn't exist
+    if (!nodes.find(n => n.id === e.key)) {
+      nodes.push({ id: e.key });
+    }
+
+    // Add link from last key to current
+    if (lastKey && lastKey !== e.key) {
+      // Remove existing link if exists
+      const existingLinkIndex = links.findIndex(l => l.source.id === lastKey && l.target.id === e.key);
+      if (existingLinkIndex !== -1) {
+        links.splice(existingLinkIndex, 1);
+      }
+
+      links.push({
+        source: lastKey,
+        target: e.key,
+        flightTime: Math.round(flightTime),
+        flightTimeScaled: Math.max(30, Math.min(200, flightTime)) // clamp for distance
+      });
+    }
+
+    lastKey = e.key;
+
+    updateGraph();
+  });
+</script>
+
+</body>
+</html>
