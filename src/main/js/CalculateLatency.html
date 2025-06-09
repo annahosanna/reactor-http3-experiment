@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Latency Measurement and Report</title>
+</head>
+<body>
+  <h1>Measuring and Reporting Latency</h1>
+  <pre id="output">Calculating...</pre>
+
+  <script>
+    window.addEventListener('load', () => {
+      const [nav] = performance.getEntriesByType("navigation");
+
+      if (!nav) {
+        document.getElementById("output").textContent = "Navigation timing not supported.";
+        return;
+      }
+
+      const ttfb = nav.responseStart - nav.requestStart;
+      const totalLoadTime = nav.loadEventEnd - nav.startTime;
+
+      const latencyData = {
+        url: window.location.href,
+        ttfb: ttfb.toFixed(2),
+        totalLoadTime: totalLoadTime.toFixed(2),
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      };
+
+      document.getElementById("output").textContent = JSON.stringify(latencyData, null, 2);
+
+      // Send JSON to server
+      fetch('/report-latency', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(latencyData)
+      }).catch(err => {
+        console.error("Failed to report latency:", err);
+      });
+    });
+  </script>
+</body>
+</html>

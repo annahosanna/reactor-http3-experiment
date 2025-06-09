@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Context Duration Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2em; }
+    #log { white-space: pre-wrap; background: #f9f9f9; padding: 1em; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Context Timing Demo</h1>
+  <p>This page measures how long you stay on it before navigating away or closing the tab.</p>
+
+  <div id="log">Waiting for you to leave the page...</div>
+
+  <script>
+    const log = document.getElementById('log');
+
+    const contextStart = performance.now();
+    const wallClockStart = new Date();
+
+    log.textContent = `Session started at: ${wallClockStart.toISOString()}`;
+
+    window.addEventListener('beforeunload', () => {
+      const contextEnd = performance.now();
+      const durationMs = contextEnd - contextStart;
+      const durationSec = (durationMs / 1000).toFixed(2);
+
+      console.log(`Session ended at: ${new Date().toISOString()}`);
+      console.log(`Context duration: ${durationMs.toFixed(2)} ms (${durationSec} seconds)`);
+
+      // Optional: send to server
+      navigator.sendBeacon('/log-context', JSON.stringify({
+        start: wallClockStart.toISOString(),
+        end: new Date().toISOString(),
+        durationMs: durationMs
+      }));
+    });
+  </script>
+</body>
+</html>

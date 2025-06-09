@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Field Fill Tracker with Upload</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    pre { background: #f0f0f0; padding: 10px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<h3>Form Tracker</h3>
+<form id="myForm">
+  <label>First Name: <input name="firstName" type="text" /></label><br><br>
+  <label>Last Name: <input name="lastName" type="text" /></label><br><br>
+  <label>Email: <input name="email" type="email" /></label><br><br>
+  <label>Phone: <input name="phone" type="tel" /></label><br><br>
+  <label>Gender: 
+    <input type="radio" name="gender" value="male" /> Male
+    <input type="radio" name="gender" value="female" /> Female
+  </label><br><br>
+  <label>Country:
+    <select name="country">
+      <option value="">--Choose--</option>
+      <option value="us">United States</option>
+      <option value="uk">United Kingdom</option>
+    </select>
+  </label><br><br>
+  <label>
+    Comments: <textarea name="comments"></textarea>
+  </label><br><br>
+  <label>
+    Agree to terms: <input type="checkbox" name="agree" />
+  </label>
+</form>
+
+<pre id="output">Waiting for input...</pre>
+
+<script>
+  const form = document.getElementById('myForm');
+  const output = document.getElementById('output');
+  const fillOrder = [];
+  const filledFields = new Set();
+  let lastTimestamp = null;
+
+  function logFieldEntry(name, value) {
+    const timestamp = Date.now();
+    const delta = lastTimestamp ? (timestamp - lastTimestamp) : null;
+    lastTimestamp = timestamp;
+
+    const entry = {
+      name,
+      value,
+      timestamp: new Date(timestamp).toISOString(),
+      deltaMs: delta
+    };
+
+    fillOrder.push(entry);
+    updateDisplay();
+    uploadData(fillOrder); // Send to server after each field
+  }
+
+  function updateDisplay() {
+    output.textContent = 'Field Fill Sequence:\n' + fillOrder.map((entry, i) => {
+      return `${i + 1}. ${entry.name} = "${entry.value}"\n    at ${entry.timestamp}` +
+             (entry.deltaMs ? ` (+${entry.deltaMs}ms since last)` : '');
+    }).join('\n');
+  }
+
+  function uploadData(data) {
+    fetch('https://your-server.com/api/fill-order', {
+      method: 'PUT', // or 'POST' depending on your API design
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'abc123', data })
+    })
+    .then(res => {
+      if (!res.ok) {
+        console.error('Upload failed:', res.status);
+      } else {
+        console.log('Data uploaded');
+      }
+    })
+    .catch(err => console.error('Upload error:', err));
+  }
+
+  // Handle various input types
+  form.querySelectorAll('input, select, textarea').forEach(el => {
+    const type = el.type;
+
+    if (type === 'radio' || type === 'checkbox') {
+      el.addEventListener('change', e => {
+        const name = e.target.name;
+        const value = e.target.checked ? e.target.value || true : false;
+        if (!filledFields.has(name) && value) {
+          filledFields.add(name);
+          logFieldEntry(name, value);
+        }
+      });
+    } else {
+      el.addEventListener('input', e => {
+        const name = e.target.name;
+        const value = e.target.value.trim();
+        if (!filledFields.has(name) && value !== '') {
+          filledFields.add(name);
+          logFieldEntry(name, value);
+        }
+      });
+
+      if (el.tagName === 'SELECT') {
+        el.addEventListener('change', e => {
+          const name = e.target.name;
+          const value = e.target.value;
+          if (!filledFields.has(name) && value !== '') {
+            filledFields.add(name);
+            logFieldEntry(name, value);
+          }
+        });
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

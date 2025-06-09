@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Geolocation with Timeout and Error Handling</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #output { white-space: pre-wrap; background: #f0f0f0; padding: 15px; border-radius: 5px; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+
+<h2>Geolocation with Timeout and Error Handling</h2>
+<div id="output">Detecting location...</div>
+
+<script>
+  const output = document.getElementById('output');
+
+  function showMessage(msg, isError = false) {
+    output.textContent = msg;
+    output.className = isError ? 'error' : '';
+  }
+
+  function fallbackToIP() {
+    showMessage('Falling back to IP-based geolocation...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      showMessage('IP-based geolocation request timed out.', true);
+    }, 5000); // 5 seconds
+
+    fetch('https://ipapi.co/json/', { signal: controller.signal })
+      .then(res => {
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        showMessage(
+          `IP-Based Location:\n` +
+          `IP: ${data.ip}\n` +
+          `City: ${data.city}\n` +
+          `Region: ${data.region}\n` +
+          `Country: ${data.country_name}\n` +
+          `Latitude: ${data.latitude}\n` +
+          `Longitude: ${data.longitude}`
+        );
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') {
+          showMessage('IP-based geolocation aborted due to timeout.', true);
+        } else {
+          showMessage('IP-based geolocation failed: ' + err.message, true);
+        }
+      });
+  }
+
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        showMessage(
+          `Browser Geolocation:\n` +
+          `Latitude: ${position.coords.latitude}\n` +
+          `Longitude: ${position.coords.longitude}\n` +
+          `Accuracy: ±${position.coords.accuracy} meters`
+        );
+      },
+      error => {
+        let msg = 'Browser geolocation failed: ';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            msg += 'Permission denied.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            msg += 'Position unavailable.';
+            break;
+          case error.TIMEOUT:
+            msg += 'Timeout reached.';
+            break;
+          default:
+            msg += 'Unknown error.';
+        }
+        showMessage(msg, true);
+        fallbackToIP();
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,  // 5 seconds
+        maximumAge: 0
+      }
+    );
+  } else {
+    showMessage('Geolocation is not supported by this browser.', true);
+    fallbackToIP();
+  }
+</script>
+
+</body>
+</html>

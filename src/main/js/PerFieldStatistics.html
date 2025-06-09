@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Per-Field Input Timing Tracker</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    pre { background: #f4f4f4; padding: 10px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<h3>Form with Per-Field Timing</h3>
+
+<form id="timedForm">
+  <label>First Name: <input type="text" name="firstName" /></label><br><br>
+  <label>Email: <input type="email" name="email" /></label><br><br>
+  <label>Gender:
+    <input type="radio" name="gender" value="male" /> Male
+    <input type="radio" name="gender" value="female" /> Female
+  </label><br><br>
+  <label>Comments: <textarea name="comments"></textarea></label><br><br>
+</form>
+
+<pre id="output">Waiting for input...</pre>
+
+<script>
+  const form = document.getElementById('timedForm');
+  const output = document.getElementById('output');
+
+  const interactionLog = [];
+  const activeTimers = {};  // Track start time per field
+  const filledFields = new Set();
+
+  function getNow() {
+    return Date.now();
+  }
+
+  function logInteraction(name, value, start, end) {
+    interactionLog.push({
+      field: name,
+      value: value,
+      startedAt: new Date(start).toISOString(),
+      endedAt: new Date(end).toISOString(),
+      durationMs: end - start
+    });
+    output.textContent = JSON.stringify(interactionLog, null, 2);
+  }
+
+  // Start timer on focus
+  form.querySelectorAll('input, textarea, select').forEach(el => {
+    el.addEventListener('focus', (e) => {
+      const name = e.target.name;
+      if (!activeTimers[name]) {
+        activeTimers[name] = getNow();
+      }
+    });
+
+    // Stop timer and log on blur/change
+    el.addEventListener('blur', (e) => {
+      const name = e.target.name;
+      const value = e.target.value || e.target.checked;
+      if (activeTimers[name]) {
+        const end = getNow();
+        logInteraction(name, value, activeTimers[name], end);
+        delete activeTimers[name];
+        filledFields.add(name);
+        if (filledFields.size === form.querySelectorAll('input, textarea, select').length) {
+          uploadData();
+        }
+      }
+    });
+
+    // For radio buttons: use change instead of blur
+    if (el.type === 'radio' || el.type === 'checkbox' || el.tagName === 'SELECT') {
+      el.addEventListener('change', (e) => {
+        const name = e.target.name;
+        if (!filledFields.has(name)) {
+          const end = getNow();
+          const start = activeTimers[name] || end;
+          logInteraction(name, e.target.value || e.target.checked, start, end);
+          delete activeTimers[name];
+          filledFields.add(name);
+          if (filledFields.size === form.querySelectorAll('input, textarea, select').length) {
+            uploadData();
+          }
+        }
+      });
+    }
+  });
+
+  function uploadData() {
+    const payload = {
+      sessionId: 'session-' + Date.now(),
+      interactionData: interactionLog
+    };
+
+    fetch('https://your-server.com/api/form-field-times', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Upload failed');
+      console.log('Data uploaded:', payload);
+    })
+    .catch(err => {
+      console.error('Upload error:', err);
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Per-Field Timing + Email Validation</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    pre { background: #f4f4f4; padding: 10px; margin-top: 20px; }
+    .error { color: red; display: none; }
+  </style>
+</head>
+<body>
+
+<h3>Form with Timing and Email Validation</h3>
+
+<form id="timedForm">
+  <label>First Name: <input type="text" name="firstName" /></label><br><br>
+  <label>Email: <input type="email" name="email" /></label>
+  <span id="emailError" class="error">Invalid email address.</span><br><br>
+  <label>Gender:
+    <input type="radio" name="gender" value="male" /> Male
+    <input type="radio" name="gender" value="female" /> Female
+  </label><br><br>
+  <label>Comments: <textarea name="comments"></textarea></label><br><br>
+</form>
+
+<pre id="output">Waiting for input...</pre>
+
+<script>
+  const form = document.getElementById('timedForm');
+  const output = document.getElementById('output');
+  const emailError = document.getElementById('emailError');
+
+  const interactionLog = [];
+  const activeTimers = {};
+  const filledFields = new Set();
+
+  function getNow() {
+    return Date.now();
+  }
+
+  function validateEmailFormat(email) {
+    const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+    return re.test(email);
+  }
+
+  function logInteraction(name, value, start, end) {
+    interactionLog.push({
+      field: name,
+      value: value,
+      startedAt: new Date(start).toISOString(),
+      endedAt: new Date(end).toISOString(),
+      durationMs: end - start
+    });
+    output.textContent = JSON.stringify(interactionLog, null, 2);
+  }
+
+  function uploadData() {
+    const emailField = interactionLog.find(f => f.field === 'email');
+    if (emailField && !validateEmailFormat(emailField.value)) {
+      console.warn('Invalid email. Not uploading.');
+      emailError.style.display = 'inline';
+      return;
+    }
+
+    const payload = {
+      sessionId: 'session-' + Date.now(),
+      interactionData: interactionLog
+    };
+
+    fetch('https://your-server.com/api/form-field-times', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Upload failed');
+      console.log('Data uploaded:', payload);
+    })
+    .catch(err => {
+      console.error('Upload error:', err);
+    });
+  }
+
+  // Add listeners to all fields
+  form.querySelectorAll('input, textarea, select').forEach(el => {
+    el.addEventListener('focus', (e) => {
+      const name = e.target.name;
+      if (!activeTimers[name]) {
+        activeTimers[name] = getNow();
+      }
+    });
+
+    el.addEventListener('blur', (e) => {
+      const name = e.target.name;
+      const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+      if (activeTimers[name]) {
+        const end = getNow();
+        logInteraction(name, value, activeTimers[name], end);
+        delete activeTimers[name];
+        filledFields.add(name);
+
+        // Validate email on blur
+        if (name === 'email') {
+          if (!validateEmailFormat(value)) {
+            emailError.style.display = 'inline';
+          } else {
+            emailError.style.display = 'none';
+          }
+        }
+
+        // Upload only when all fields have been visited
+        const totalFields = form.querySelectorAll('input, textarea, select').length;
+        if (filledFields.size === totalFields) {
+          uploadData();
+        }
+      }
+    });
+
+    // Email live validation
+    if (el.name === 'email') {
+      el.addEventListener('input', () => {
+        const valid = validateEmailFormat(el.value.trim());
+        emailError.style.display = valid ? 'none' : 'inline';
+      });
+    }
+
+    // For radios and checkboxes, trigger blur equivalent on change
+    if (el.type === 'radio' || el.type === 'checkbox') {
+      el.addEventListener('change', (e) => {
+        const name = e.target.name;
+        const value = e.target.value || e.target.checked;
+        const end = getNow();
+        const start = activeTimers[name] || end;
+        if (!filledFields.has(name)) {
+          logInteraction(name, value, start, end);
+          filledFields.add(name);
+          delete activeTimers[name];
+
+          const totalFields = form.querySelectorAll('input, textarea, select').length;
+          if (filledFields.size === totalFields) {
+            uploadData();
+          }
+        }
+      });
+    }
+  });
+</script>
+
+</body>
+</html>
