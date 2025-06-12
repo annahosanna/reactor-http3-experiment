@@ -56,7 +56,7 @@ public class ServeHttp2 {
     return response.sendString(monoString);
   }
 
-  public static NettyOutbound okResponseV2(
+  public static NettyOutbound processGetV2(
     HttpServerRequest request,
     HttpServerResponse response
   ) {

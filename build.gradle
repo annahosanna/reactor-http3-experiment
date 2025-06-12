@@ -36,6 +36,11 @@ test {
     useJUnitPlatform()
 }
 
+javadoc {
+    source = sourceSets.main.allJava
+    destinationDir = file("${buildDir}/docs/javadoc")
+}
+
 jar {
   manifest {
     attributes (

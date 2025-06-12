@@ -32,12 +32,11 @@ public final class ReactorHttp3Experiment {
     DisposableServer disposableServerV11 = serverV11
       .route(routes ->
         routes
-          .get("/fortune", ServeHttp11::okResponseV11)
+          .get("/fortune", ServeHttp11::processGetV11)
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp11::processPostV11)
           .put("/fortune", ServeHttp11::processRestPutV11)
           .get("/robots.txt", ServeCommon::returnRobotsTxt)
-          .get("*", ServeCommon::returnDefaultRoute)
       )
       .bindNow();
 
@@ -60,12 +59,11 @@ public final class ReactorHttp3Experiment {
     DisposableServer disposableServerV2 = serverV2
       .route(routes ->
         routes
-          .get("/fortune", ServeHttp2::okResponseV2)
+          .get("/fortune", ServeHttp2::processGetV2)
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp2::processPostV2)
           .put("/fortune", ServeHttp2::processPutV2)
           .get("/robots.txt", ServeCommon::returnRobotsTxt)
-          .get("*", ServeCommon::returnDefaultRoute)
       )
       .bindNow();
 
@@ -97,12 +95,11 @@ public final class ReactorHttp3Experiment {
     DisposableServer disposableServerV3 = serverV3
       .route(routes ->
         routes
-          .get("/fortune", ServeHttp3::okResponseV3)
+          .get("/fortune", ServeHttp3::processGetV3)
           .get("/favicon.ico", ServeCommon::returnFavicon)
           .post("/fortune", ServeHttp3::processPostV3)
           .put("/fortune", ServeHttp3::processPutV3)
           .get("/robots.txt", ServeCommon::returnRobotsTxt)
-          .get("*", ServeCommon::returnDefaultRoute)
       )
       .bindNow();
 

@@ -57,7 +57,7 @@ public class ServeHttp11 {
   // Also check out org.apache.commons.validator.routines.UrlValidator
   // java.net.URL
   // https://github.com/apache/commons-validator/blob/master/src/main/java/org/apache/commons/validator/routines/UrlValidator.java
-  public static NettyOutbound okResponseV11(
+  public static NettyOutbound processGetV11(
     HttpServerRequest request,
     HttpServerResponse response
   ) {

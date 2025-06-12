@@ -178,9 +178,7 @@ public class ServeCommon {
 
   // Wrap request to json conversion
   public static Mono<String> getMonoStringFromFlux(HttpServerRequest request) {
-    // Built in function to convert a Mono<ByteBuf> into an HttpData object for each parameter (Flux)
     Flux<HttpData> fluxHttpData = request.receiveForm();
-    // This applies a key function, and a value (defaults to the flux object). In this case a value function has been added as well to return a String rather than HttpData
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData.collectMap(
       ServeCommon::getHttpDataName,
       ServeCommon::getHttpDataValue
@@ -336,10 +334,6 @@ public class ServeCommon {
     } else {
       // System.out.println("No value");
     }
-    // This does nothing
-    // ArrayList<Map<String, String>> kv = new ArrayList<Map<String, String>>(1);
-    // kv.add(new HashMap<String, String>());
-    // return Flux.fromIterable(kv);
     return Flux.empty();
   }
 
@@ -363,8 +357,6 @@ public class ServeCommon {
     return (Mono.empty());
   }
 
-  // Avoid leaks by using: releaseBody(), toBodilessEntity(), bodyToMono(void.class)
-  // Only process first parameter. JDBC Code in lambda blocks although H2 is in memory so I am not really sure R2DBC is worth it.
   public static Mono<String> doFilter(String result) {
     Mono<String> valueOnly = doConvertJSONToValue(result);
     return valueOnly.flatMap(value -> {
@@ -372,31 +364,6 @@ public class ServeCommon {
       return Mono.just(value);
     });
   }
-
-  // public static boolean doFilter2(String result) {
-  //   System.out.println("JSON value: " + result);
-  //   String key = new String();
-  //   String value = new String();
-  //   try {
-  //     List<Map<String, String>> pojo = new ObjectMapper()
-  //       .readValue(result, new TypeReference<List<Map<String, String>>>() {});
-  //     Map<String, String> map = pojo.iterator().next();
-  //     key = map.get("Key");
-  //     value = map.get("Value");
-  //   } catch (Exception e) {
-  //     e.printStackTrace();
-  //     if (result.length() > 0) {
-  //       String[] ss = result.split(",");
-  //       String[] sc = ss[0].split(":");
-  //       key = sc[0].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-  //       value = sc[1].replaceAll("[^a-zA-Z0-9.,!?\\\\\\s]+", "");
-  //     }
-  //   }
-
-  //   updateDBWithString(value);
-
-  //   return true;
-  // }
 
   public static Mono<String> getFormData(
     HttpServerRequest request,
@@ -437,20 +404,7 @@ public class ServeCommon {
     Mono<String> convertMonoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringString
     );
-    // A Mono<String> of json data
-    /*
-    Mono<String> returnMonoString = convertMonoMapString.flatMap(
-      ServeCommon::doFilter
-    );
-    return returnMonoString;
-    // .filter(ServeCommon::doFilter2);
-    */
     Flux<String> fluxString2 = doConvertJSONToValues(convertMonoMapString);
-    //);
-    // fluxString.subscribe();
-
-    // Does not matter if there is a waiter. It never invokes flatMap here or in doConvertJSONToValues
-    // next() had no effect either
     Flux<String> dbFlux = fluxString2.flatMap(s -> {
       updateDBWithStringR2DBC(s);
       return Flux.just("");
@@ -459,11 +413,6 @@ public class ServeCommon {
     return waiter;
   }
 
-  // Functions for maps
-  // Ok chars in post param a-zA-Z0-9*-_.+&=%
-  // Split on & (trim off ends)
-  // Split on = (could be null(- will split still work)
-  // 'null', 'true', 'false', number, string are valid in json
   public static String getFormParamName(String param) {
     String keyValuePair = param;
     if (param.length() - param.replace("=", "").length() != 1) {
@@ -507,17 +456,29 @@ public class ServeCommon {
     return keyPairs;
   }
 
-  // The bad thing about a POST is that there is that all values are considered strings. Whereas with JSON there are datatypes
+  /**
+   * Sanitize a string that could be x-www-form-urlencoded
+   * Remove invalid (not urlencoded) characters
+   * Remove extra characters at the beginning and end
+   * Remove ambigious key/value
+   * Remove duplicate seperators
+   * @param str the raw potential x-www-form-urlencoded string
+   * @return    the list of (still urlencoded) key/value pairs
+   */
   public static Flux<String> stringToFlux(String str) {
     String cleanString = str
-      .replaceAll("[^a-zA-Z0-9*-_.+&=%\"]+", "")
-      .replaceAll("[&][^=]+[&]", "&")
-      .replaceAll("[&]+[=]+", "&")
-      .replaceAll("[^&=]*[=]+[^&=]*[=]+", "&")
-      .replaceAll("[&]+", "&")
-      .replaceAll("[=]+", "=")
-      .replaceAll("^[&]", "")
-      .replaceAll("[&]$", "");
+      .replaceAll("[^a-zA-Z0-9*-_.+&=%\"]+", "") // Remove invalid characters
+      .replaceAll("^[=&]+", "") // =x -> x          Remove leading = and &
+      .replaceAll("^[^=&]+[&]+", "") // ^x& ->      Remove leading characters
+      .replaceAll("^[^=&]+$", "") // ^x$ ->         Remove leading characters
+      .replaceAll("[&][^&=]$", "&") // &x$ -> &     Remove trailing characters
+      .replaceAll("[&][^=]+[&]", "&") // &x& -> &   Ambiguous
+      .replaceAll("[&]+[=]+", "&") // &&== -> &     Missing key
+      .replaceAll("[^&=]*[=]+[^&=]*[=]+", "&") //   Replace k==x== or ==x== or == with & Ambiguous key
+      .replaceAll("[&]+", "&") // && -> &           Clean up extra &
+      .replaceAll("[=]+", "=") // == -> =           Clean up extra =
+      .replaceAll("^[&]+", "") //                   Remove leading &
+      .replaceAll("[&]+$", ""); //                  Remove trailing &
     List<String> list = new ArrayList<String>();
     if (cleanString.contains("&")) {
       String[] stringArray = cleanString.split("&");
@@ -535,28 +496,39 @@ public class ServeCommon {
     }
   }
 
+  /**
+   * Validates that a (sanitized) string could be a key/value pair
+   * @param list the list of key/value pairs
+   * @param str  the potential string to add to the list
+   */
   public static void adjustEqualSign(List<String> list, String str) {
     if ((str.contains("=")) && (!str.startsWith("=")) && (str.length() > 0)) {
       list.add(str);
     }
   }
 
+  /**
+   * Wraps doConvertJSONToValues(String)
+   * @param value  the Mono<String> with raw text
+   * @return       the extracted values
+   */
   public static Flux<String> doConvertJSONToValues(Mono<String> value) {
     System.out.println("doConvertJSONToValues - Mono -> Flux");
-    // Fix this to flatMap
-    // Decorate mono as flux
 
     Flux<String> flux = Flux.from(value);
     return flux.flatMap(ServeCommon::doConvertJSONToValues);
-    // return Flux.empty();
   }
 
-  // Really what I want to do is convert the returnValue's map to a flux
-  // Invoke via flatMapMany
+  /**
+   * Tests that the raw text string conforms to List<Map<String,String>>
+   * Extracts the values from each Map Entry
+   * Creates a Flux<String> containing the extracted values
+   * @param result  a raw text string
+   * @return        the extracted values
+   */
   public static Flux<String> doConvertJSONToValues(String result) {
     System.out.println("doConvertJSONToValues - String -> Flux");
 
-    // Just so we know what we are parsing
     System.out.println(result);
     // Do not waste time parsing the impossible
     // [{"":""}]
@@ -595,28 +567,23 @@ public class ServeCommon {
     }
   }
 
-  // Only accept json
+  /**
+   * This method consumes the output of the response,
+   * and validates that that the String conforms to the JSON form List<Map<String,String>>
+   * Extracts only the values from the Map entries
+   * Returns a Flux<String> of all of the values
+   * Asynchonously dispatches those values to be added to the Database
+   * And finally waits for completion
+   * @param request  the HTTP request object
+   * @param response the HTTP response object
+   * @return         a Mono<String> object which is blank
+   */
   public static Mono<String> processPutData(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    // System.out.println("processPutData");
     Mono<String> rawMonoString = getMonoString(request, response);
-    // Check if rawMonoString is valid JSON with flatMap using jackson or fastjson.
-    // If its valid then return the string, otherwise return {}.
-    // Flux<Map<String, String>> fluxString = rawMonoString.flatMapMany(
-    //ServeCommon::doConvertJSONToValues
-    // );
-    //Flux<String> fluxString = rawMonoString.thenMany(
-    //ServeCommon::doConvertJSONToValues
-    //);
-    // fluxString.subscribe();
     Flux<String> fluxString = doConvertJSONToValues(rawMonoString);
-    //);
-    // fluxString.subscribe();
-
-    // Does not matter if there is a waiter. It never invokes flatMap here or in doConvertJSONToValues
-    // next() had no effect either
     Flux<String> dbFlux = fluxString.flatMap(s -> {
       updateDBWithStringR2DBC(s);
       return Flux.just("");
@@ -625,35 +592,231 @@ public class ServeCommon {
     return waiter;
   }
 
+  /**
+   * Insert data from the database into a static web Page
+   * @param fortune  the data to be inserted
+   * @return         the web page from the resulting concatination
+   */
   public static String htmlResponse(String fortune) {
-    String htmlHeader =
+    String finalHtml =
       """
-      <!DOCTYPE html>
+        <!DOCTYPE html>
         <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <link rel=\"icon\" href=\"data:,\"/>
-          </head>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Keystroke Frequency Graph</title>
+          <style>
+            html, body {
+              margin: 0;
+              height: 100%;
+              font-family: sans-serif;
+              display: flex;
+              flex-direction: column;
+              background: white;
+            }
+
+            #controls {
+              display: flex;
+              padding: 10px;
+              background: #f2f2f2;
+              border-bottom: 1px solid #ccc;
+            }
+
+            input {
+              flex: 1;
+              font-size: 1rem;
+              padding: 8px;
+            }
+
+            button {
+              margin-left: 10px;
+              padding: 8px 12px;
+              font-size: 1rem;
+            }
+
+            svg {
+              flex: 1;
+              width: 100%;
+              background: white;
+              cursor: move;
+            }
+
+            text.label {
+              font-size: 12px;
+              fill: black;
+              pointer-events: none;
+            }
+          </style>
+        </head>
         <body>
-          <p>
-            <a href=\"/fortune\">Your fortune:</a>
-      """;
-    String htmlFooter =
-      """
-          </p>
-          <p>
-            <form action=\"/fortune\" method=\"POST\">
-              <label for=\"fortune\">Add a fortune</label>
-              <input type=\"text\" name=\"fortune\" id=\"fortune\" value=\"\" />
-            </p>
-            <p>
-              <button type=\"submit\">Send request</button>
-            </p>
-          </form>
+
+          <div id="controls">
+            <input id="inputField" placeholder="Type letters, numbers, or space..." autofocus />
+            <button id="resetButton">Reset</button>
+          </div>
+
+          <svg></svg>
+
+          <script src="https://d3js.org/d3.v7.min.js"></script>
+          <script>
+            const svg = d3.select("svg");
+            const container = svg.append("g");
+            const linkGroup = container.append("g");
+            const nodeGroup = container.append("g");
+            const labelGroup = container.append("g");
+
+            let nodes = [], links = [];
+            const nodeMap = new Map(), linkMap = new Map();
+            let lastKey = null;
+
+            const input = document.getElementById("inputField");
+            const resetButton = document.getElementById("resetButton");
+
+            const width = () => window.innerWidth;
+            const height = () => window.innerHeight - document.getElementById("controls").offsetHeight;
+
+            const sizeScale = d3.scaleSqrt().domain([1, 50]).range([10, 40]);
+            const colorScale = d3.scaleLinear()
+              .domain([1, 50])
+              .range(["#b2dfdb", "#00796b"]); // light teal to dark teal
+
+            const simulation = d3.forceSimulation()
+              .force("link", d3.forceLink().id(d => d.id).distance(100))
+              .force("charge", d3.forceManyBody().strength(-300))
+              .force("center", d3.forceCenter(width() / 2, height() / 2))
+              .force("collide", d3.forceCollide().radius(d => sizeScale(d.count) + 5))
+              .on("tick", ticked);
+
+            svg.call(d3.zoom().on("zoom", e => container.attr("transform", e.transform)));
+            svg.attr("width", width()).attr("height", height());
+
+            input.addEventListener("keydown", e => {
+              let key = e.key.toLowerCase();
+              if (key === ' ') key = 'space';
+              if (!/^[a-z0-9 ]$/.test(key)) return;
+
+              if (!nodeMap.has(key)) {
+                const node = { id: key, count: 1 };
+                nodes.push(node);
+                nodeMap.set(key, node);
+              } else {
+                nodeMap.get(key).count++;
+              }
+
+              if (lastKey && lastKey !== key) {
+                const linkKey = `${lastKey}->${key}`;
+                if (!linkMap.has(linkKey)) {
+                  const link = { source: lastKey, target: key, count: 1 };
+                  links.push(link);
+                  linkMap.set(linkKey, link);
+                } else {
+                  linkMap.get(linkKey).count++;
+                }
+              }
+
+              lastKey = key;
+              updateGraph();
+            });
+
+            resetButton.addEventListener("click", () => {
+              nodes = [];
+              links = [];
+              nodeMap.clear();
+              linkMap.clear();
+              lastKey = null;
+              nodeGroup.selectAll("*").remove();
+              linkGroup.selectAll("*").remove();
+              labelGroup.selectAll("*").remove();
+              simulation.nodes([]);
+              simulation.force("link").links([]);
+              simulation.alpha(0.1).restart();
+            });
+
+            function updateGraph() {
+              simulation.nodes(nodes);
+              simulation.force("link").links(links);
+              simulation.alpha(0.9).restart();
+
+              const linkSel = linkGroup.selectAll("line")
+                .data(links, d => d.source.id + "-" + d.target.id);
+
+              linkSel.exit().remove();
+
+              linkSel.enter()
+                .append("line")
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 1.5)
+                .merge(linkSel);
+
+              const nodeSel = nodeGroup.selectAll("circle")
+                .data(nodes, d => d.id);
+
+              nodeSel.exit().remove();
+
+              nodeSel.enter()
+                .append("circle")
+                .call(drag(simulation))
+                .merge(nodeSel)
+                .attr("r", d => sizeScale(d.count))
+                .attr("fill", d => colorScale(d.count));
+
+              const labelSel = labelGroup.selectAll("text")
+                .data(nodes, d => d.id);
+
+              labelSel.exit().remove();
+
+              labelSel.enter()
+                .append("text")
+                .attr("class", "label")
+                .merge(labelSel)
+                .text(d => d.id)
+                .attr("text-anchor", "middle");
+            }
+
+            function ticked() {
+              nodeGroup.selectAll("circle")
+                .attr("cx", d => d.x = Math.max(30, Math.min(width() - 30, d.x)))
+                .attr("cy", d => d.y = Math.max(30, Math.min(height() - 30, d.y)));
+
+              linkGroup.selectAll("line")
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+              labelGroup.selectAll("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y + 4);
+            }
+
+            function drag(sim) {
+              return d3.drag()
+                .on("start", (e, d) => {
+                  if (!e.active) sim.alphaTarget(0.3).restart();
+                  d.fx = d.x;
+                  d.fy = d.y;
+                })
+                .on("drag", (e, d) => {
+                  d.fx = e.x;
+                  d.fy = e.y;
+                })
+                .on("end", (e, d) => {
+                  if (!e.active) sim.alphaTarget(0);
+                  d.fx = null;
+                  d.fy = null;
+                });
+            }
+
+            window.addEventListener("resize", () => {
+              svg.attr("width", width()).attr("height", height());
+              simulation.force("center", d3.forceCenter(width() / 2, height() / 2));
+            });
+          </script>
         </body>
-      </html>
+        </html>
+
       """;
-    String finalHtml = htmlHeader + fortune + htmlFooter;
     return finalHtml;
   }
 }
+// generate source code for a force directed graph, using d3, based on key stroke repitition for numbers, letters and space characters. Nodes should change color based on frequency. node color medium  teal. white background. Graph should dynamicaly resize to fit window and all nodes should fit within the window. user should be able to interact with graph. The color of the letters on the nodes should be black. The nodes should be connected with gray lines. visualize the transition between keys and scale nodes with frequency. there should be a reset option
