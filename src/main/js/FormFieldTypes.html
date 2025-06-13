@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Comprehensive Form Tracker</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #fafafa; }
+    form { max-width: 600px; margin: auto; }
+    label { display: block; margin: 20px 0 5px; }
+    input, select, textarea, button {
+      width: 100%; padding: 10px; font-size: 1em;
+    }
+  </style>
+</head>
+<body>
+
+<h2>All Fields Form Tracker</h2>
+
+<form id="trackedForm">
+  <label>Text: <input type="text" name="textField" /></label>
+  <label>Email: <input type="email" name="emailField" /></label>
+  <label>Password: <input type="password" name="passwordField" /></label>
+  <label>Number: <input type="number" name="numberField" /></label>
+  <label>Search: <input type="search" name="searchField" /></label>
+  <label>Tel: <input type="tel" name="telField" /></label>
+  <label>URL: <input type="url" name="urlField" /></label>
+  <label>Checkbox: <input type="checkbox" name="checkboxField" /></label>
+  <label>Radio:
+    <input type="radio" name="radioField" value="yes" /> Yes
+    <input type="radio" name="radioField" value="no" /> No
+  </label>
+  <label>Select:
+    <select name="selectField">
+      <option value="">--Select--</option>
+      <option value="a">A</option>
+      <option value="b">B</option>
+    </select>
+  </label>
+  <label>Textarea: <textarea name="textareaField"></textarea></label>
+  <label>Date: <input type="date" name="dateField" /></label>
+  <label>Time: <input type="time" name="timeField" /></label>
+  <label>Range: <input type="range" name="rangeField" min="0" max="100" /></label>
+  <label>Color: <input type="color" name="colorField" /></label>
+  <button type="submit">Submit</button>
+</form>
+
+<script>
+  const form = document.getElementById("trackedForm");
+
+  const fillOrder = [];
+  const timestamps = {};
+  const timeSpent = {};
+  const keystrokes = {};
+  const backspaces = {};
+  const focusStart = {};
+
+  function recordInteraction(name) {
+    fillOrder.push(name); // record every time it’s visited
+    if (!timestamps[name]) {
+      timestamps[name] = new Date().toISOString();
+    }
+  }
+
+  function recordTimeSpent(name) {
+    const start = focusStart[name];
+    if (start != null) {
+      const duration = performance.now() - start;
+      timeSpent[name] = (timeSpent[name] || 0) + duration;
+      delete focusStart[name];
+    }
+  }
+
+  function isTextInput(el) {
+    return ["text", "email", "password", "number", "search", "tel", "url"].includes(el.type) || el.tagName === "TEXTAREA";
+  }
+
+  Array.from(form.elements).forEach(el => {
+    const name = el.name;
+    if (!name) return;
+
+    // Focus/blur to track time
+    el.addEventListener("focus", () => {
+      focusStart[name] = performance.now();
+      recordInteraction(name);
+    });
+
+    el.addEventListener("blur", () => recordTimeSpent(name));
+    el.addEventListener("change", () => recordInteraction(name));
+
+    if (isTextInput(el)) {
+      el.addEventListener("keydown", e => {
+        keystrokes[name] = (keystrokes[name] || 0) + 1;
+        if (e.key === "Backspace") {
+          backspaces[name] = (backspaces[name] || 0) + 1;
+        }
+      });
+    }
+  });
+
+  function getBrowserMetadata() {
+    return {
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      platform: navigator.platform,
+      screen: {
+        width: screen.width,
+        height: screen.height,
+        colorDepth: screen.colorDepth
+      },
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      timezoneOffset: new Date().getTimezoneOffset()
+    };
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    document.activeElement.blur(); // trigger blur event
+
+    const formData = {};
+    Array.from(form.elements).forEach(el => {
+      const name = el.name;
+      if (!name) return;
+
+      if (el.type === "checkbox") {
+        formData[name] = el.checked;
+      } else if (el.type === "radio") {
+        if (el.checked) formData[name] = el.value;
+      } else {
+        formData[name] = el.value;
+      }
+    });
+
+    const payload = {
+      submittedAt: new Date().toISOString(),
+      fillOrder,
+      timestamps,
+      timeSpent: Object.fromEntries(
+        Object.entries(timeSpent).map(([k, v]) => [k, `${Math.round(v)} ms`])
+      ),
+      keystrokes,
+      backspaces,
+      formData,
+      browserMetadata: getBrowserMetadata()
+    };
+
+    console.log("Submitting payload:", payload);
+
+    try {
+      const res = await fetch("https://example.com/api/track-form", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Server error");
+      alert("Form submitted successfully.");
+    } catch (err) {
+      console.error("Submission failed:", err);
+      alert("Submission failed.");
+    }
+  });
+</script>
+
+</body>
+</html>

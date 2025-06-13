@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cursor Character Offset Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 12px 0;
+      font-size: 16px;
+    }
+    .info {
+      font-size: 18px;
+      color: #333;
+      margin-top: 10px;
+      background: #f0f0f0;
+      padding: 8px;
+      border-radius: 4px;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>Cursor Character Offset Detector</h2>
+  <p>Click or move the cursor inside any input or textarea below to see the character offset:</p>
+
+  <input type="text" id="input1" placeholder="Type something here..." />
+  <textarea id="textarea1" rows="5" placeholder="Or type something here..."></textarea>
+
+  <div class="info" id="output">Click inside a field to see cursor offset.</div>
+
+  <script>
+    const output = document.getElementById('output');
+
+    function updateOffset(event) {
+      const el = event.target;
+      // Only process if the element supports selectionStart
+      if (typeof el.selectionStart === 'number') {
+        const offset = el.selectionStart;
+        output.textContent = `Field "${el.id}": Cursor at character offset ${offset}`;
+      } else {
+        output.textContent = 'Cursor position not available for this field.';
+      }
+    }
+
+    // Attach event listeners to inputs and textareas
+    const inputs = document.querySelectorAll('input[type="text"], textarea');
+
+    inputs.forEach(input => {
+      input.addEventListener('click', updateOffset);
+      input.addEventListener('keyup', updateOffset);
+      input.addEventListener('select', updateOffset);
+    });
+  </script>
+</body>
+</html>

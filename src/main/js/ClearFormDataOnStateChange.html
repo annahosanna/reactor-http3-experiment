@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Form with Page State Handling</title>
+</head>
+<body>
+  <h2>Example Form</h2>
+  <form id="myForm">
+    <label>Name: <input type="text" name="name" /></label><br />
+    <label>Email: <input type="email" name="email" /></label><br />
+    <label>Message: <textarea name="message"></textarea></label><br />
+    <button type="submit">Submit</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('myForm');
+
+    // Detect navigation type
+    const navType = performance.getEntriesByType("navigation")[0]?.type || "navigate";
+    console.log("Navigation Type:", navType);
+
+    if (navType === 'reload') {
+      console.log("Page was refreshed — clearing form fields.");
+      form.reset();
+      [...form.elements].forEach(el => {
+        if (el.type !== 'submit' && el.type !== 'button') {
+          el.value = '';
+        }
+      });
+    } else if (navType === 'back_forward') {
+      console.log("User used browser history navigation (back/forward).");
+      // Optional: form.reset(); // Uncomment if you want to reset on back/forward too
+    } else {
+      console.log("Fresh navigation or link click.");
+    }
+
+    // Optional: Warn before navigating away (e.g., on refresh or back)
+    window.addEventListener("beforeunload", function (e) {
+      // Skip confirmation if form is already submitted
+      if (!form.dataset.submitted) {
+        e.preventDefault();
+        e.returnValue = ""; // Required for most browsers to show prompt
+      }
+    });
+
+    // Mark form as submitted so we don't prompt on reload after submit
+    form.addEventListener("submit", function () {
+      form.dataset.submitted = "true";
+    });
+  </script>
+</body>
+</html>

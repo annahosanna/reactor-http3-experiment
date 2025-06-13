@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Input Modality, Device Info & Mobile Detection</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 2rem;
+    background: #fff;
+    color: #222;
+  }
+  .info {
+    margin-top: 1rem;
+  }
+  .label {
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h1>Input Modality, Device Info & Mobile Detection</h1>
+
+<div class="info">
+  <div><span class="label">Last Input Modality:</span> <span id="inputModality">unknown</span></div>
+  <div><span class="label">Touch Device:</span> <span id="touchSupport"></span></div>
+  <div><span class="label">Screen Orientation:</span> <span id="screenOrientation"></span></div>
+  <div><span class="label">Device Pixel Ratio:</span> <span id="pixelRatio"></span></div>
+  <div><span class="label">Is Mobile Device:</span> <span id="isMobile"></span></div>
+</div>
+
+<script>
+  const inputModalityEl = document.getElementById('inputModality');
+  const touchSupportEl = document.getElementById('touchSupport');
+  const screenOrientationEl = document.getElementById('screenOrientation');
+  const pixelRatioEl = document.getElementById('pixelRatio');
+  const isMobileEl = document.getElementById('isMobile');
+
+  let lastInput = 'unknown';
+
+  function updateInputModality(modality) {
+    lastInput = modality;
+    inputModalityEl.textContent = modality;
+  }
+
+  window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType) {
+      updateInputModality(e.pointerType); // mouse, touch, pen
+    }
+  });
+
+  window.addEventListener('keydown', () => {
+    updateInputModality('keyboard');
+  });
+
+  window.addEventListener('mousedown', () => {
+    updateInputModality('mouse');
+  });
+
+  window.addEventListener('touchstart', () => {
+    updateInputModality('touch');
+  });
+
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  touchSupportEl.textContent = isTouchDevice ? 'Yes' : 'No';
+
+  function updateOrientation() {
+    const orientation = (screen.orientation && screen.orientation.type) ||
+                        screen.mozOrientation ||
+                        screen.msOrientation ||
+                        'unknown';
+    screenOrientationEl.textContent = orientation;
+  }
+
+  window.addEventListener('orientationchange', updateOrientation);
+  updateOrientation();
+
+  pixelRatioEl.textContent = window.devicePixelRatio || 1;
+
+  // Basic mobile detection from userAgent
+  function detectMobile() {
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    // Checks for Android, iOS, Windows Phone etc.
+    const isMobile = /android|iphone|ipad|ipod|windows phone|blackberry|opera mini|mobile/i.test(ua);
+    return isMobile;
+  }
+
+  isMobileEl.textContent = detectMobile() ? 'Yes' : 'No';
+
+</script>
+
+</body>
+</html>

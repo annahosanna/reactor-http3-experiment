@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Keystroke Timing Graph</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        background: #fff;
+      }
+
+      #controls {
+        padding: 1rem;
+      }
+
+      input {
+        width: 90%;
+        padding: 0.5rem;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+      }
+
+      svg {
+        width: 100%;
+        height: 80vh;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <input
+        type="text"
+        id="keystrokeInput"
+        placeholder="Type here..."
+        autofocus
+      />
+      <button id="resetButton">Reset Graph</button>
+    </div>
+
+    <svg id="graph"></svg>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+      const svg = d3.select("#graph");
+      const input = document.getElementById("keystrokeInput");
+      const resetButton = document.getElementById("resetButton");
+
+      let nodes = {};
+      let links = [];
+      let lastKey = null;
+      let lastTime = null;
+
+      const width = () => window.innerWidth;
+      const height = () => window.innerHeight * 0.8;
+
+      const simulation = d3
+        .forceSimulation()
+        .force(
+          "link",
+          d3
+            .forceLink()
+            .id((d) => d.id)
+            .distance(120),
+        )
+        .force("charge", d3.forceManyBody().strength(-300))
+        .force("center", d3.forceCenter(width() / 2, height() / 2))
+        .force("collision", d3.forceCollide(30));
+
+      function drag(simulation) {
+        return d3
+          .drag()
+          .on("start", (event) => {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+          })
+          .on("drag", (event) => {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+          })
+          .on("end", (event) => {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+          });
+      }
+
+      function updateGraph() {
+        const nodeArray = Object.values(nodes);
+        const linkArray = links;
+
+        svg.selectAll("*").remove();
+
+        const link = svg
+          .append("g")
+          .attr("stroke", "#ccc")
+          .selectAll("line")
+          .data(linkArray)
+          .join("line")
+          .attr("stroke-width", (d) => Math.max(1, 10 - d.delay / 50));
+
+        const node = svg
+          .append("g")
+          .attr("stroke", "#000")
+          .attr("stroke-width", 1.5)
+          .selectAll("circle")
+          .data(nodeArray)
+          .join("circle")
+          .attr("r", 20)
+          .attr("fill", "#4db6ac") // medium teal
+          .call(drag(simulation));
+
+        const label = svg
+          .append("g")
+          .selectAll("text")
+          .data(nodeArray)
+          .join("text")
+          .text((d) => d.id)
+          .attr("font-size", 12)
+          .attr("fill", "black");
+
+        simulation.nodes(nodeArray).on("tick", () => {
+          link
+            .attr("x1", (d) => d.source.x)
+            .attr("y1", (d) => d.source.y)
+            .attr("x2", (d) => d.target.x)
+            .attr("y2", (d) => d.target.y);
+
+          node
+            .attr(
+              "cx",
+              (d) => (d.x = Math.max(30, Math.min(width() - 30, d.x))),
+            )
+            .attr(
+              "cy",
+              (d) => (d.y = Math.max(30, Math.min(height() - 30, d.y))),
+            );
+
+          label.attr("x", (d) => d.x - 6).attr("y", (d) => d.y + 4);
+        });
+
+        simulation.force("link").links(linkArray);
+      }
+
+      input.addEventListener("keydown", (e) => {
+        const now = performance.now();
+        const key = e.key.length === 1 ? e.key : null;
+        if (!key) return;
+
+        if (!nodes[key]) {
+          nodes[key] = { id: key };
+        }
+
+        if (lastKey) {
+          const delay = now - lastTime;
+          links.push({
+            source: lastKey,
+            target: key,
+            delay: delay,
+          });
+
+          if (links.length > 50) links.shift(); // limit total links
+        }
+
+        lastKey = key;
+        lastTime = now;
+
+        updateGraph();
+      });
+
+      resetButton.addEventListener("click", () => {
+        nodes = {};
+        links = [];
+        lastKey = null;
+        lastTime = null;
+        svg.selectAll("*").remove();
+        simulation.nodes([]);
+        simulation.force("link").links([]);
+        simulation.alpha(1).restart();
+      });
+
+      window.addEventListener("resize", () => {
+        svg.attr("width", width()).attr("height", height());
+        simulation.force("center", d3.forceCenter(width() / 2, height() / 2));
+        simulation.alpha(0.5).restart();
+      });
+
+      // Initial setup
+      svg.attr("width", width()).attr("height", height());
+    </script>
+  </body>
+</html>

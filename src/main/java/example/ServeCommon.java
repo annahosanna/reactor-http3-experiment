@@ -27,10 +27,17 @@ public class ServeCommon {
 
   public ServeCommon() {}
 
+  /**
+   * Return a blank svg as the favicon
+   * @param request
+   * @param response
+   * @return
+   */
   public static NettyOutbound returnFavicon(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    // The smallest SVG image possible
     String imageText = new String(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
     );
@@ -44,21 +51,33 @@ public class ServeCommon {
     return response.sendString(responseContent);
   }
 
+  /**
+   * Return a robots.txt the disallows everything
+   * @param request
+   * @param response
+   * @return
+   */
   public static NettyOutbound returnRobotsTxt(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> responseContent = Mono.just("User-Agent: *\nDisallow: *\n");
+    Mono<String> responseContent = Mono.just("User-Agent: *\nDisallow: /\n");
     response.header("content-type", "text/plain");
     response.status(200);
     return response.sendString(responseContent);
   }
 
+  /**
+   * Return a web page
+   * @param request
+   * @param response
+   * @return
+   */
   public static NettyOutbound returnDefaultRoute(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
-    Mono<String> responseContent = Mono.just(htmlResponse(""));
+    Mono<String> responseContent = Mono.just(htmlResponse());
     response.header("content-type", "text/html");
     response.header(
       "alt-svc",
@@ -68,6 +87,11 @@ public class ServeCommon {
     return response.sendString(responseContent);
   }
 
+  /**
+   * Parse them HttpData type for keys
+   * @param httpData
+   * @return
+   */
   public static String getHttpDataName(HttpData httpData) {
     String name = new String();
     if (httpData instanceof Attribute) {
@@ -84,6 +108,11 @@ public class ServeCommon {
     return name;
   }
 
+  /**
+   * Parse HttpData for values
+   * @param httpData
+   * @return
+   */
   public static String getHttpDataValue(HttpData httpData) {
     String value = new String();
     if (httpData instanceof Attribute) {
@@ -102,7 +131,13 @@ public class ServeCommon {
     return value;
   }
 
-  // This could be turned into a Jackson serialized object using a POJO like: public class Pojo { String Key; String Value;}
+  /**
+   * Convert Map<key,value> to JSON {"key":"value"}
+   * @param <K>
+   * @param <V>
+   * @param monoMap
+   * @return
+   */
   public static <K, V> Mono<String> convertMonoMapToMonoStringGeneric(
     Mono<Map<K, V>> monoMap
   ) {
@@ -152,7 +187,12 @@ public class ServeCommon {
     );
   }
 
-  // Convert receive ByteBufMono to StringMono
+  /**
+   * Convert request ByteBuffer to string
+   * @param request
+   * @param response
+   * @return
+   */
   public static Mono<String> getMonoString(
     HttpServerRequest request,
     HttpServerResponse response
@@ -164,7 +204,7 @@ public class ServeCommon {
       // .filter(str -> str.length() > 0)
       .flatMap(str -> {
         if (str.length() > 0) {
-          System.out.println("Received data: " + str);
+          System.out.println("Received data");
           return Mono.just(str);
         } else {
           System.out.println("No data received");
@@ -176,20 +216,30 @@ public class ServeCommon {
     return receivedData;
   }
 
-  // Wrap request to json conversion
+  /**
+   * Use the built in ReceiveForm method to obtain received data
+   * This is slow but has the advantage that it can parse both x-www-form-urlencoded
+   * and multipart/form-data
+   * @param request
+   * @return
+   */
   public static Mono<String> getMonoStringFromFlux(HttpServerRequest request) {
     Flux<HttpData> fluxHttpData = request.receiveForm();
     Mono<Map<String, String>> monoMapStringHttpData = fluxHttpData.collectMap(
       ServeCommon::getHttpDataName,
       ServeCommon::getHttpDataValue
     );
+    // Not right - this needs to be a flux not mono
     Mono<String> monoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringHttpData
     ).flatMap(ServeCommon::doFilter);
     return monoMapString;
   }
 
-  // Random note to self .zipWith(Flux.interval())) can be used to create a delay
+  /**
+   * Html to Pass back if the user does no access the correct page
+   * @return
+   */
   public static String responseText() {
     return (
       "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body><a href=\"/fortune\">Your fortune:</a><br/>" +
@@ -198,7 +248,11 @@ public class ServeCommon {
     );
   }
 
-  // public static Flux<Map.Entry<String, String>> displayHeaders(<Map.Entry<String, String>>element) {
+  /**
+   * Display a k/v pair Map.Entry and return it as a Flux
+   * @param element
+   * @return
+   */
   public static Flux<Map.Entry<String, String>> displayHeaders(
     Map.Entry<String, String> element
   ) {
@@ -208,6 +262,12 @@ public class ServeCommon {
     return (Flux.just(element));
   }
 
+  /**
+   * Return a fortune in a format based on content type
+   * @param request
+   * @param response
+   * @return
+   */
   public static Mono<String> responseTextR2DBC(
     HttpServerRequest request,
     HttpServerResponse response
@@ -243,7 +303,7 @@ public class ServeCommon {
       response.status(200);
 
       Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-        return (Mono.just(htmlResponse(fortune)));
+        return (Mono.just(htmlResponse()));
       });
       return createResponseText;
     } else if (
@@ -306,7 +366,10 @@ public class ServeCommon {
     );
   }
 
-  // This can be called from then()
+  /**
+   * Update the JDBC database with a String
+   * @param value
+   */
   public static void updateDBWithString(String value) {
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
       FortuneDatabase.addFortune(value);
@@ -315,7 +378,10 @@ public class ServeCommon {
     }
   }
 
-  // This can be called from then()
+  /**
+   * Update the R2DBC database with a String
+   * @param value
+   */
   public static void updateDBWithStringR2DBC(String value) {
     // System.out.println("updateDBWithStringR2DBC");
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
@@ -326,6 +392,11 @@ public class ServeCommon {
     }
   }
 
+  /**
+   * Update the R2DBC database with a Map
+   * @param value
+   * @return
+   */
   public static Flux<Map<String, String>> updateDBWithStringR2DBC(
     Map<String, String> value
   ) {
@@ -337,6 +408,12 @@ public class ServeCommon {
     return Flux.empty();
   }
 
+  /**
+   * Convert a JSON string in the form if List<Map<String,String>>
+   * to a key/value pair
+   * @param result
+   * @return
+   */
   public static Mono<String> doConvertJSONToValue(String result) {
     String key = new String();
     String value = new String();
@@ -357,12 +434,14 @@ public class ServeCommon {
     return (Mono.empty());
   }
 
+  /**
+   * Update the R2DBC database with the last k/v pair
+   * @param result
+   * @return
+   */
   public static Mono<String> doFilter(String result) {
-    Mono<String> valueOnly = doConvertJSONToValue(result);
-    return valueOnly.flatMap(value -> {
-      updateDBWithStringR2DBC(value);
-      return Mono.just(value);
-    });
+    Flux<String> valueOnly = doConvertJSONToValues(result);
+    return updateDBWithFluxString(valueOnly);
   }
 
   public static Mono<String> getFormData(
@@ -405,12 +484,7 @@ public class ServeCommon {
       monoMapStringString
     );
     Flux<String> fluxString2 = doConvertJSONToValues(convertMonoMapString);
-    Flux<String> dbFlux = fluxString2.flatMap(s -> {
-      updateDBWithStringR2DBC(s);
-      return Flux.just("");
-    });
-    Mono<String> waiter = dbFlux.last("");
-    return waiter;
+    return updateDBWithFluxString(fluxString2);
   }
 
   public static String getFormParamName(String param) {
@@ -471,22 +545,26 @@ public class ServeCommon {
       .replaceAll("^[=&]+", "") // =x -> x          Remove leading = and &
       .replaceAll("^[^=&]+[&]+", "") // ^x& ->      Remove leading characters
       .replaceAll("^[^=&]+$", "") // ^x$ ->         Remove leading characters
-      .replaceAll("[&][^&=]$", "&") // &x$ -> &     Remove trailing characters
-      .replaceAll("[&][^=]+[&]", "&") // &x& -> &   Ambiguous
+      .replaceAll("[&][^&=]+$", "&") // &x$ -> &    Remove trailing characters
       .replaceAll("[&]+[=]+", "&") // &&== -> &     Missing key
-      .replaceAll("[^&=]*[=]+[^&=]*[=]+", "&") //   Replace k==x== or ==x== or == with & Ambiguous key
+      .replaceAll("[^&=]*[=]+[^&=]*[=]+", "&") //   Replace k==x== or ==x== or == with & Ambiguous
+      .replaceAll("[&][^=]+[&]", "&") // &x& -> &   Ambiguous
       .replaceAll("[&]+", "&") // && -> &           Clean up extra &
       .replaceAll("[=]+", "=") // == -> =           Clean up extra =
-      .replaceAll("^[&]+", "") //                   Remove leading &
+      .replaceAll("^[&=]+", "") //                  Remove leading & or =
       .replaceAll("[&]+$", ""); //                  Remove trailing &
     List<String> list = new ArrayList<String>();
-    if (cleanString.contains("&")) {
+    // a=&b=
+    if ((cleanString.contains("&")) && (cleanString.length() > 4)) {
       String[] stringArray = cleanString.split("&");
       for (int i = 0; i < stringArray.length; i++) {
         adjustEqualSign(list, stringArray[i]);
       }
-    } else {
+      // b=
+    } else if ((!cleanString.contains("&")) && (cleanString.length() > 1)) {
       adjustEqualSign(list, cleanString);
+    } else {
+      // Invalid
     }
 
     if (list.toArray().length == 0) {
@@ -570,10 +648,7 @@ public class ServeCommon {
   /**
    * This method consumes the output of the response,
    * and validates that that the String conforms to the JSON form List<Map<String,String>>
-   * Extracts only the values from the Map entries
-   * Returns a Flux<String> of all of the values
-   * Asynchonously dispatches those values to be added to the Database
-   * And finally waits for completion
+   * and then updates the database
    * @param request  the HTTP request object
    * @param response the HTTP response object
    * @return         a Mono<String> object which is blank
@@ -582,8 +657,20 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    // Get raw data
     Mono<String> rawMonoString = getMonoString(request, response);
+    // Confirm that it is List<Map<String,String>>
     Flux<String> fluxString = doConvertJSONToValues(rawMonoString);
+    // Update the database
+    return updateDBWithFluxString(fluxString);
+  }
+
+  /**
+   * Update the database with a Flux of k/v pairs
+   * @param fluxString
+   * @return
+   */
+  public static Mono<String> updateDBWithFluxString(Flux<String> fluxString) {
     Flux<String> dbFlux = fluxString.flatMap(s -> {
       updateDBWithStringR2DBC(s);
       return Flux.just("");
@@ -593,11 +680,19 @@ public class ServeCommon {
   }
 
   /**
-   * Insert data from the database into a static web Page
+   * Insert data from the database into a static web Page - Generated from ChatGTP with:
+   * Generate source code for a force directed graph, using D3, based on key stroke repetition
+   * for numbers, letters and space characters. Nodes should change color based on frequency.
+   * Node starting color should be medium teal, with a white background. The graph should
+   * dynamicaly resize to fit the window
+   * and all nodes should fit within the window. Users should be able to interact with the graph.
+   * The color of the letters on the nodes should be black. The nodes should be connected with
+   * gray lines. The graph should enable the visualizion the transition between keys, and scale
+   * nodes with key frequency. There should be a reset option.
    * @param fortune  the data to be inserted
    * @return         the web page from the resulting concatination
    */
-  public static String htmlResponse(String fortune) {
+  public static String htmlResponseD3() {
     String finalHtml =
       """
         <!DOCTYPE html>
@@ -818,5 +913,19 @@ public class ServeCommon {
       """;
     return finalHtml;
   }
+
+  /*
+  public static String htmlResponse() {
+    String finalHtml =
+      """
+      """;
+    return finalHtml;
+  }
+  */
+  public static String htmlResponse() {
+    String finalHtml =
+      """
+      """;
+    return finalHtml;
+  }
 }
-// generate source code for a force directed graph, using d3, based on key stroke repitition for numbers, letters and space characters. Nodes should change color based on frequency. node color medium  teal. white background. Graph should dynamicaly resize to fit window and all nodes should fit within the window. user should be able to interact with graph. The color of the letters on the nodes should be black. The nodes should be connected with gray lines. visualize the transition between keys and scale nodes with frequency. there should be a reset option
