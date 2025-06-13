@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PUT Auth Request</title>
+</head>
+<body>
+  <h2>Send Authenticated PUT Request</h2>
+  <textarea id="dataField" rows="5" cols="40" placeholder="Enter data to send..."></textarea><br><br>
+  <button id="sendBtn">Send PUT Request</button>
+
+  <pre id="responseOutput"></pre>
+
+  <script>
+    document.getElementById('sendBtn').addEventListener('click', () => {
+      const data = document.getElementById('dataField').value;
+      const token = 'secret-token'; // This must match the server's expected token
+
+      fetch('http://localhost:8080/secure-data', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': 'Bearer ' + token
+        },
+        body: data
+      })
+      .then(response => response.text().then(text => {
+        document.getElementById('responseOutput').textContent =
+          `Response (${response.status}): ${text}`;
+      }))
+      .catch(error => {
+        document.getElementById('responseOutput').textContent =
+          `Error: ${error}`;
+      });
+    });
+  </script>
+</body>
+</html>

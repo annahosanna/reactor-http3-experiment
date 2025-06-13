@@ -1,21 +1,29 @@
-### SPA.md for updates on the SPA status.
+## SPA.md for updates on the SPA status.
 
-#### Goal: To create a client side SPA which gathers metadata for AI analysis
+### Goal: To create a client side SPA which gathers metadata for AI analysis
 
-##### Who
+#### Who
 
 - No record is made of individuals.
   - No cookies
   - No local storage
-  - No names
+  - All data entered should be fictitious
   - All information is used to anonymously identify patterns from a large group of users.
+  - Information is stored in memory only
+  - This uses a non persistent SessionID to group information, but it is not a secure cookie
 
-##### When
+#### When
 
 - New session, page forward/back or browser refresh detection
   - Clear all data from form and start a new session
 
-##### Types of metadata
+#### Reporting
+
+- At some time in the future I am hoping to add Reporting
+  - Reports about mean/median/std deviation about various information collected
+  - Visualization (using D3) of various information collected
+
+#### Types of metadata
 
 - Form field visit
   - Order and revisit can be determined later
@@ -35,7 +43,7 @@
   - Holidays
   - Visiting from different country
 
-##### I do not think it is necessary to capture these but you could:
+#### I do not think it is necessary to capture these but you could:
 
 - Typing habits
 

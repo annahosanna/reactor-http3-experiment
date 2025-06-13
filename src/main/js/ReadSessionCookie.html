@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Read Session Cookie</title>
+</head>
+<body>
+  <h2>Session Cookie Reader</h2>
+  <h2>Session Cookie must not be HttpOnly</h2>
+  <pre id="output"></pre>
+
+  <script>
+    function getCookie(name) {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [key, value] = cookie.trim().split('=');
+        if (key === name) {
+          return decodeURIComponent(value);
+        }
+      }
+      return null;
+    }
+
+    const sessionId = getCookie("SESSIONID");
+    document.getElementById("output").textContent = sessionId
+      ? `SESSIONID: ${sessionId}`
+      : "SESSIONID cookie not found or is HttpOnly.";
+  </script>
+</body>
+</html>
