@@ -39,11 +39,41 @@
       <label> Comments: <textarea name="comments"></textarea></label
       ><br /><br />
       <label> Agree to terms: <input type="checkbox" name="agree" /> </label>
+      <label>Text: <input type="text" name="textField" /></label>
+      <label>Email: <input type="email" name="emailField" /></label>
+      <label>Password: <input type="password" name="passwordField" /></label>
+      <label>Number: <input type="number" name="numberField" /></label>
+      <label>Search: <input type="search" name="searchField" /></label>
+      <label>Tel: <input type="tel" name="telField" /></label>
+      <label>URL: <input type="url" name="urlField" /></label>
+      <label>Checkbox: <input type="checkbox" name="checkboxField" /></label>
+      <label
+        >Radio: <input type="radio" name="radioField" value="yes" /> Yes
+        <input type="radio" name="radioField" value="no" /> No
+      </label>
+      <label
+        >Select:
+        <select name="selectField">
+          <option value="">--Select--</option>
+          <option value="a">A</option>
+          <option value="b">B</option>
+        </select>
+      </label>
+      <label>Textarea: <textarea name="textareaField"></textarea></label>
+      <label>Date: <input type="date" name="dateField" /></label>
+      <label>Time: <input type="time" name="timeField" /></label>
+      <label
+        >Range: <input type="range" name="rangeField" min="0" max="100"
+      /></label>
+      <label>Color: <input type="color" name="colorField" /></label>
+      <button type="submit">Submit</button>
     </form>
 
     <pre id="output">Waiting for input...</pre>
 
     <script>
+      // Start a new session/SESSIONID on GET
+      // Associate PUT with SESSIONID (how to determnie table?)
       // This should be the endpoint to get the fortune from
       const url = "https://jsonplaceholder.typicode.com/posts/1"; // Example GET endpoint
 
@@ -114,12 +144,12 @@
         return null;
       }
 
-      function showSessionID() {
-        const sessionID = getCookie("SessionID");
-        document.getElementById("output").textContent = sessionID
-          ? `SessionID: ${sessionID}`
-          : "SessionID cookie not found.";
-      }
+      // function showSessionID() {
+      //   const sessionID = getCookie("SessionID");
+      //   document.getElementById("output").textContent = sessionID
+      //     ? `SessionID: ${sessionID}`
+      //     : "SessionID cookie not found.";
+      // }
 
       const form = document.getElementById("myForm");
       const output = document.getElementById("output");
