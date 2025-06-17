@@ -2,6 +2,7 @@ package example;
 
 import example.FortuneDatabase;
 import example.ServeCommon;
+import example.impl.BooleanObject;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -66,9 +67,8 @@ public class ServeHttp11 {
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
       response
-    ).subscribeOn(Schedulers.boundedElastic());
+    );
 
-    response.header("alt-svc", "h3=\":443\"; ma=2592000, h2=\":443\"; ma=1");
     return response.sendString(responseContent);
   }
 
@@ -80,6 +80,18 @@ public class ServeHttp11 {
   ) {
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Put HTTP/1.1");
+    BooleanObject authenticatedResult = new BooleanObject();
+    Mono.just(request)
+      .flatMap(aRequest ->
+        ServeCommon.checkAuthenticationHeader(aRequest, authenticatedResult)
+      )
+      .then()
+      .subscribe();
+    if (authenticatedResult.getValue() == false) {
+      response.status(401);
+      response.header("content-type", "text/html");
+      return response.sendString(Mono.just("<html>Access Denied</html>"));
+    }
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request

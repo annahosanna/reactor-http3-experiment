@@ -1,6 +1,7 @@
 package example;
 
 import example.FortuneDatabase;
+import example.impl.BooleanObject;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -8,6 +9,7 @@ import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -60,11 +62,6 @@ public class ServeHttp3 {
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
       response
-    ).subscribeOn(Schedulers.boundedElastic());
-    response.header("content-type", "text/html");
-    response.header(
-      "alt-svc",
-      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
 
     return response.sendString(responseContent);
@@ -76,6 +73,20 @@ public class ServeHttp3 {
   ) {
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Put HTTP/3");
+    // Disposable testAuthenticated =
+    // We know if the request is authenticated, but how to unwrap the value?
+    BooleanObject authenticatedResult = new BooleanObject();
+    Mono.just(request)
+      .flatMap(aRequest ->
+        ServeCommon.checkAuthenticationHeader(aRequest, authenticatedResult)
+      )
+      .then()
+      .subscribe();
+    if (authenticatedResult.getValue() == false) {
+      response.status(401);
+      response.header("content-type", "text/html");
+      return response.sendString(Mono.just("<html>Access Denied</html>"));
+    }
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request

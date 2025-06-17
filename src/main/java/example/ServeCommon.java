@@ -2,6 +2,8 @@ package example;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import example.impl.BooleanObject;
+import example.impl.ContentTypeObject;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.multipart.Attribute;
@@ -262,6 +264,50 @@ public class ServeCommon {
     return (Flux.just(element));
   }
 
+  public static String contentTypeTest(
+    ContentTypeObject contentTypeObject,
+    HttpServerRequest request
+  ) {
+    String contentType = (request
+          .requestHeaders()
+          .get(HttpHeaderNames.CONTENT_TYPE) ==
+        null)
+      ? (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) == null)
+            ? null
+            : (request.requestHeaders().get(HttpHeaderNames.ACCEPT))))
+      : (request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE));
+    return contentType;
+  }
+
+  public static void getContentType(
+    ContentTypeObject contentTypeObject,
+    HttpServerRequest request
+  ) {
+    String contentType = contentTypeTest(
+      contentTypeObject,
+      request
+    ).toLowerCase();
+    if (
+      contentType.startsWith(
+        HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
+      )
+    ) {
+      contentTypeObject.setIsHtml();
+    } else if (
+      contentType.startsWith(
+        HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+      )
+    ) {
+      contentTypeObject.setIsJson();
+    } else if (
+      contentType.startsWith(
+        HttpHeaderValues.TEXT_PLAIN.toString().toLowerCase()
+      )
+    ) {
+      contentTypeObject.setIsText();
+    }
+  }
+
   /**
    * Return a fortune in a format based on content type
    * @param request
@@ -272,98 +318,59 @@ public class ServeCommon {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    // Debugging
     Flux<Map.Entry<String, String>> headerFlux = Flux.fromIterable(
       request.requestHeaders().entries()
     ).flatMap(ServeCommon::displayHeaders);
     headerFlux.subscribe();
 
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
+    );
+    response.header("cache-control", "no-cache");
+    // Resolve content type before async stuff
+    ContentTypeObject contentTypeObject = new ContentTypeObject();
+    getContentType(contentTypeObject, request);
+    // Start async stuff
     Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
       .subscribeOn(Schedulers.boundedElastic());
+
     // This could be a mono if I knew how to modify response and return a string
-    if (
-      ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
-        (request
-            .requestHeaders()
-            .get(HttpHeaderNames.CONTENT_TYPE)
-            .toLowerCase()
-            .startsWith(
-              HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
-            ))) ||
-      (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) != null) &&
-          (request
-              .requestHeaders()
-              .get(HttpHeaderNames.ACCEPT)
-              .toLowerCase()
-              .startsWith(
-                HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
-              ))))
-    ) {
-      response.header("cache-control", "no-cache");
+    if (contentTypeObject.getIsHtml()) {
       response.header("content-type", "text/html");
       response.status(200);
-
       Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
         return (Mono.just(htmlResponse()));
       });
       return createResponseText;
-    } else if (
-      ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
-        (request
-            .requestHeaders()
-            .get(HttpHeaderNames.CONTENT_TYPE)
-            .toLowerCase()
-            .startsWith(
-              HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
-            ))) ||
-      (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) != null) &&
-          (request
-              .requestHeaders()
-              .get(HttpHeaderNames.ACCEPT)
-              .toLowerCase()
-              .startsWith(
-                HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
-              ))))
-    ) {
-      response.header("cache-control", "no-cache");
+    } else if (contentTypeObject.getIsText()) {
+      response.header("content-type", "text/plain");
+      response.status(200);
+
+      // return getFortuneMono;
+      return Mono.just(
+        "Obtaining untrusted content is currently not supported"
+      );
+    } else if (contentTypeObject.getIsJson()) {
       response.header("content-type", "application/json");
       response.status(200);
-      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-        return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
-      });
-      return createResponseText;
-    } else if (
-      ((request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null) &&
-        (request
-            .requestHeaders()
-            .get(HttpHeaderNames.CONTENT_TYPE)
-            .toLowerCase()
-            .startsWith(
-              HttpHeaderValues.TEXT_PLAIN.toString().toLowerCase()
-            ))) ||
-      (((request.requestHeaders().get(HttpHeaderNames.ACCEPT) != null) &&
-          (request
-              .requestHeaders()
-              .get(HttpHeaderNames.ACCEPT)
-              .toLowerCase()
-              .startsWith(
-                HttpHeaderValues.TEXT_PLAIN.toString().toLowerCase()
-              ))))
-    ) {
-      response.header("cache-control", "no-cache");
-      response.header("content-type", "application/json");
-      response.status(200);
-      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-        return (Mono.just(fortune));
-      });
-      return createResponseText;
+      // Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+      // return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
+      // });
+      //
+      // return createResponseText;
+
+      return Mono.just("[{\"fortune\":\"Untrusted content\"}]");
+    } else {
+      response.header("content-type", "text/html");
+      response.status(415);
+      return (
+        Mono.just(
+          "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body>There was a problem processing your request: Unsupported media type</body></html>"
+        )
+      );
     }
-    // Default
-    response.status(415);
-    return (
-      Mono.just(
-        "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body>There was a problem processing your request: Unsupported media type</body></html>"
-      )
-    );
   }
 
   /**
@@ -927,5 +934,73 @@ public class ServeCommon {
       """
       """;
     return finalHtml;
+  }
+
+  public static Mono<String> checkAuthenticationHeader(
+    HttpServerRequest request,
+    BooleanObject success
+  ) {
+    String expectedToken = "Bearer secret-token";
+    if (
+      (request.requestHeaders().get(HttpHeaderNames.AUTHORIZATION) != null) &&
+      (expectedToken.equals(
+          request.requestHeaders().get(HttpHeaderNames.AUTHORIZATION)
+        ))
+    ) {
+      success.setValue(true);
+      return Mono.just("");
+    }
+    success.setValue(false);
+    return Mono.empty();
+  }
+
+  public static String accessDeniedResponse() {
+    String response =
+      """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+          <title>Access Denied</title>
+          <style>
+            html, body {
+              margin: 0;
+              padding: 0;
+              height: 100%;
+              width: 100%;
+              background-color: white;
+            }
+            svg {
+              width: 100%;
+              height: 100%;
+              display: block;
+            }
+            line {
+              stroke: red;
+              stroke-width: 10;
+              stroke-linecap: round;
+            }
+            text {
+              fill: red;
+              font-family: sans-serif;
+              text-anchor: middle;
+              dominant-baseline: middle;
+            }
+          </style>
+        </head>
+        <body>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+            <!-- Red X -->
+            <line x1="10" y1="10" x2="90" y2="90"/>
+            <line x1="90" y1="10" x2="10" y2="90"/>
+
+            <!-- Access Denied text -->
+            <text x="50" y="50" font-size="10">Access Denied</text>
+          </svg>
+        </body>
+        </html>
+      """;
+    return response;
   }
 }
