@@ -35,15 +35,20 @@ public class ServeHttp2 {
   ) {
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Post HTTP/2");
-    // Wow adding a flatMap must be the weirdest work around ever
+    // response.addCookie(ServeCommon.generateSessionId());
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     )
       .next()
       .flatMap(data -> Mono.just(""));
 
-    // When I added block it worked, but block()/blockFirst()/blockLast() are not supported
-
+    // The session cookie should have been sent by the client automatically
+    Cookie sessionCookie = request.cookies().get("SESSIONID") != null
+      ? request.cookies().get("SESSIONID").stream().findFirst().orElse(null)
+      : null;
+    // if (sessionCookie != null) {
+    //   System.out.println("Session ID: " + sessionCookie.value());
+    // }
     // Need to find another way to get hostname
     response.header(
       "location",
@@ -63,11 +68,11 @@ public class ServeHttp2 {
   ) {
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Get HTTP/2");
+    response.addCookie(ServeCommon.generateSessionId());
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
       response
     );
-
     return response.sendString(responseContent);
   }
 
@@ -106,6 +111,7 @@ public class ServeHttp2 {
     )
       .last()
       .flatMap(data -> Mono.just(""));
+
     response.status(204);
     response.header("content-type", "application/json");
     response.header(
