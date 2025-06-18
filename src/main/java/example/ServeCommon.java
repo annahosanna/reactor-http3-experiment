@@ -343,17 +343,15 @@ public class ServeCommon {
     ContentTypeObject contentTypeObject = new ContentTypeObject();
     getContentType(contentTypeObject, request);
     // Start async stuff
-    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
-      .subscribeOn(Schedulers.boundedElastic());
 
     // This could be a mono if I knew how to modify response and return a string
     if (contentTypeObject.getIsHtml()) {
       response.header("content-type", "text/html");
       response.status(200);
-      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-        return (Mono.just(htmlResponse()));
-      });
-      return createResponseText;
+      // Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+      //   return (Mono.just(htmlResponse()));
+      // });
+      return Mono.just(htmlResponse();
     } else if (contentTypeObject.getIsText()) {
       response.header("content-type", "text/plain");
       response.status(200);
@@ -365,13 +363,16 @@ public class ServeCommon {
     } else if (contentTypeObject.getIsJson()) {
       response.header("content-type", "application/json");
       response.status(200);
-      // Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-      // return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
-      // });
-      //
-      // return createResponseText;
+      //This returns untrusted content; however, the JS client will display it rather than being pushed by us.
+      Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
+        .subscribeOn(Schedulers.boundedElastic());
 
-      return Mono.just("[{\"fortune\":\"Untrusted content\"}]");
+      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+        return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
+      });
+
+      return createResponseText;
+      // return Mono.just("[{\"fortune\":\"Untrusted content\"}]");
     } else {
       response.header("content-type", "text/html");
       response.status(415);
@@ -1043,4 +1044,23 @@ public class ServeCommon {
 
     return cookie;
   }
+  public static Mono<String> checkSESSIONIDCookie(
+    HttpServerRequest request,
+    BooleanObject success
+  ) {
+    // The session cookie should have been sent by the client automatically
+    Cookie sessionCookie = request.cookies().get("SESSIONID") != null
+      ? request.cookies().get("SESSIONID").stream().findFirst().orElse(null)
+      : null;
+    if (sessionCookie != null) {
+      success.setValue(true);
+      return Mono.just("");
+
+    } else {
+      success.setValue(false);
+      return Mono.empty();
+    }
+
+  }
+
 }

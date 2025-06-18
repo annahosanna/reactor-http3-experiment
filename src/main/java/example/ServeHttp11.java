@@ -6,6 +6,8 @@ import example.impl.BooleanObject;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
@@ -106,6 +108,23 @@ public class ServeHttp11 {
       response.header("content-type", "text/html");
       return response.sendString(Mono.just("<html>Access Denied</html>"));
     }
+
+    // 422 Unprocessable Content if SESSIONID is missing
+    BooleanObject sessionidResult = new BooleanObject();
+    Mono.just(request)
+      .flatMap(aRequest ->
+        ServeCommon.checkSESSIONIDCookie(aRequest, sessionidResult)
+      )
+      .then()
+      .subscribe();
+    if (sessionidResult.getValue() == false) {
+      response.status(422);
+      response.header("content-type", "text/html");
+      return response.sendString(
+        Mono.just("<html>SESSIONID is missing</html>")
+      );
+    }
+
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request
