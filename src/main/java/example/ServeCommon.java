@@ -6,13 +6,19 @@ import example.impl.BooleanObject;
 import example.impl.ContentTypeObject;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -134,7 +140,11 @@ public class ServeCommon {
   }
 
   /**
-   * Convert Map<key,value> to JSON {"key":"value"}
+   * Convert Map<key,value> to JSON {"Key":"key","Value":"value"}
+   * and then those to a list
+   * Keep in mind this is a Map and not a HashMap
+   * So duplicate keys are OK; however, values can
+   * be overwritten
    * @param <K>
    * @param <V>
    * @param monoMap
@@ -155,34 +165,34 @@ public class ServeCommon {
               (entry.getValue() instanceof String))
           ) {
             ObjectMapper mapper = new ObjectMapper();
-            String key = new String();
-            String value = new String();
+            String key = null;
+            String value = null;
             try {
               if (Objects.isNull(entry.getKey())) {
-                key = "\"null\"";
+                key = new String(mapper.writeValueAsString(null));
               } else {
-                key = mapper.writeValueAsString((String) (entry.getKey()));
+                key = new String(
+                  mapper.writeValueAsString((String) (entry.getKey()))
+                );
               }
               if (Objects.isNull(entry.getValue())) {
-                value = mapper.writeValueAsString(null);
+                value = new String(mapper.writeValueAsString(null));
               } else {
-                value = mapper.writeValueAsString((String) (entry.getValue()));
+                value = new String(
+                  mapper.writeValueAsString((String) (entry.getValue()))
+                );
               }
             } catch (Exception e) {
               System.out.println("Problem converting String to JSON String");
-              key = ("\"" + ((String) (entry.getKey())) + "\"").replaceAll(
-                  "[^a-zA-Z0-9.\\s]+",
-                  ""
-                );
-              value = ("\"" + ((String) (entry.getValue())) + "\"").replaceAll(
-                  "[^a-zA-Z0-9.\\s]+",
-                  ""
-                );
+              key = new String("null");
+              value = new String("null");
             }
-            // return ("{\"Key\":" + key + ",\"Value\":" + value + "}");
-            return ("{" + key + ":" + value + "}");
+            // Its a map, not a hashmap, so duplicate keys are ok
+            return ("{\"Key\":" + key + ",\"Value\":" + value + "}");
           } else {
-            return ("{\"Key\":null}");
+            // This is a map rather than hashmap
+            // This means it is the wrong type of object
+            return ("{\"Key\":null,\"Value\":null}");
           }
         })
         .collect(Collectors.joining(",", "[", "]"))
@@ -389,11 +399,14 @@ public class ServeCommon {
    * Update the R2DBC database with a String
    * @param value
    */
-  public static void updateDBWithStringR2DBC(String value) {
+  public static void updateDBWithStringR2DBC(
+    String value,
+    HttpServerRequest request
+  ) {
     // System.out.println("updateDBWithStringR2DBC");
     if ((!Objects.isNull(value)) && (value.length() > 0)) {
       System.out.println("updateDBWithStringR2DBC Adding Fortune: " + value);
-      FortuneDatabaseR2DBC.addFortune(value);
+      FortuneDatabaseR2DBC.addFortune(value, request);
     } else {
       // System.out.println("No value");
     }
@@ -405,10 +418,11 @@ public class ServeCommon {
    * @return
    */
   public static Flux<Map<String, String>> updateDBWithStringR2DBC(
-    Map<String, String> value
+    Map<String, String> value,
+    HttpServerRequest request
   ) {
     if (!Objects.isNull(value)) {
-      FortuneDatabaseR2DBC.addFortune(value);
+      FortuneDatabaseR2DBC.addFortune(value, request);
     } else {
       // System.out.println("No value");
     }
@@ -446,9 +460,12 @@ public class ServeCommon {
    * @param result
    * @return
    */
-  public static Mono<String> doFilter(String result) {
-    Flux<String> valueOnly = doConvertJSONToValues(result);
-    return updateDBWithFluxString(valueOnly);
+  public static Mono<String> doFilter(
+    String result,
+    HttpServerRequest request
+  ) {
+    Flux<String> valueOnly = doConvertJSONArrayToValues(result);
+    return updateDBWithFluxString(valueOnly, request);
   }
 
   public static Mono<String> getFormData(
@@ -490,8 +507,8 @@ public class ServeCommon {
     Mono<String> convertMonoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringString
     );
-    Flux<String> fluxString2 = doConvertJSONToValues(convertMonoMapString);
-    return updateDBWithFluxString(fluxString2);
+    Flux<String> fluxString2 = doConvertJSONArrayToValues(convertMonoMapString);
+    return updateDBWithFluxString(fluxString2, request);
   }
 
   public static String getFormParamName(String param) {
@@ -593,15 +610,17 @@ public class ServeCommon {
   }
 
   /**
-   * Wraps doConvertJSONToValues(String)
+   * Wraps doConvertJSONArrayToValues(String)
    * @param value  the Mono<String> with raw text
    * @return       the extracted values
    */
-  public static Flux<String> doConvertJSONToValues(Mono<String> value) {
-    System.out.println("doConvertJSONToValues - Mono -> Flux");
+  public static Flux<String> doConvertJSONArrayToValues(Mono<String> value) {
+    System.out.println(
+      "doConvertJSONArrayToValues - Mono<String> -> Flux<String>"
+    );
 
     Flux<String> flux = Flux.from(value);
-    return flux.flatMap(ServeCommon::doConvertJSONToValues);
+    return flux.flatMap(ServeCommon::doConvertJSONArrayToValues);
   }
 
   /**
@@ -611,17 +630,18 @@ public class ServeCommon {
    * @param result  a raw text string
    * @return        the extracted values
    */
-  public static Flux<String> doConvertJSONToValues(String result) {
-    System.out.println("doConvertJSONToValues - String -> Flux");
+  public static Flux<String> doConvertJSONArrayToValues(String result) {
+    System.out.println("doConvertJSONArrayToValues - String -> Flux<String>");
 
     System.out.println(result);
     // Do not waste time parsing the impossible
     // [{"":""}]
     if (result.length() > 8) {
       try {
-        // First convert the json string to an object
+        // First test the string by trying to convert it as json to an object
         // Then convert the List of Maps to only map values
-        // System.out.println("parse result");
+        // [{ "Key": "K1", "Value": "V1" },{ "Key": "K2", "Value": "V2" }]
+        // Interate over the List and check the Key name, and then the Value
         List<Map<String, String>> returnValue = new ObjectMapper()
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
 
@@ -667,9 +687,9 @@ public class ServeCommon {
     // Get raw data
     Mono<String> rawMonoString = getMonoString(request, response);
     // Confirm that it is List<Map<String,String>>
-    Flux<String> fluxString = doConvertJSONToValues(rawMonoString);
+    Flux<String> fluxString = doConvertJSONArrayToValues(rawMonoString);
     // Update the database
-    return updateDBWithFluxString(fluxString);
+    return updateDBWithFluxString(fluxString, request);
   }
 
   /**
@@ -677,9 +697,12 @@ public class ServeCommon {
    * @param fluxString
    * @return
    */
-  public static Mono<String> updateDBWithFluxString(Flux<String> fluxString) {
+  public static Mono<String> updateDBWithFluxString(
+    Flux<String> fluxString,
+    HttpServerRequest request
+  ) {
     Flux<String> dbFlux = fluxString.flatMap(s -> {
-      updateDBWithStringR2DBC(s);
+      updateDBWithStringR2DBC(s, request);
       return Flux.just("");
     });
     Mono<String> waiter = dbFlux.last("");
@@ -1002,5 +1025,22 @@ public class ServeCommon {
         </html>
       """;
     return response;
+  }
+
+  // Create a new session ID cookie which is in memory only
+  public static Cookie generateSessionId() {
+    byte[] sessionIdBytes = new byte[32]; // Generate a 32-byte (256-bit) session ID
+    SecureRandom secureRandom = new SecureRandom();
+    secureRandom.nextBytes(sessionIdBytes);
+    // I do not care about knowing the session ID. Its just used for the DB index
+    String sessionid = Base64.getUrlEncoder()
+      .withoutPadding()
+      .encodeToString(sessionIdBytes);
+    Cookie cookie = new DefaultCookie("SESSIONID", sessionid);
+    cookie.setHttpOnly(true);
+    cookie.setPath("/");
+    cookie.setSecure(true);
+
+    return cookie;
   }
 }

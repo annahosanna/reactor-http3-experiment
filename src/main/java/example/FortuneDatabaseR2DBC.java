@@ -15,6 +15,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.netty.http.server.HttpServerRequest;
 
 public class FortuneDatabaseR2DBC {
 
@@ -87,7 +88,7 @@ public class FortuneDatabaseR2DBC {
 
     for (int i = 0; i < initialFortunes.length; i++) {
       // System.out.println("Adding initial fortune: " + initialFortunes[i]);
-      addFortune(initialFortunes[i]);
+      FortuneDatabase.addFortune(initialFortunes[i]);
     }
   }
 
@@ -142,16 +143,19 @@ public class FortuneDatabaseR2DBC {
     return Mono.just("");
   }
 
-  public static void addFortune(Map<String, String> fortune) {
+  public static void addFortune(
+    Map<String, String> fortune,
+    HttpServerRequest request
+  ) {
     // System.out.println("Adding fortune - via map");
 
     for (Map.Entry<String, String> entry : fortune.entrySet()) {
-      addFortune(entry.getValue());
+      addFortune(entry.getValue(), request);
     }
   }
 
   // This works fine via jdbc
-  public static void addFortune(String fortune) {
+  public static void addFortune(String fortune, HttpServerRequest request) {
     System.out.println("Adding fortune - via string: " + fortune);
     H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
       io.r2dbc.h2.H2ConnectionConfiguration.builder()

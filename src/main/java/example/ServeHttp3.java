@@ -5,6 +5,8 @@ import example.impl.BooleanObject;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.resolver.HostsFileEntriesProvider.Parser;
 import java.time.Duration;
 import java.util.HashMap;
@@ -34,12 +36,20 @@ public class ServeHttp3 {
   ) {
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Post HTTP/3");
+    // response.addCookie(ServeCommon.generateSessionId());
     Mono<String> monoString = Flux.from(
       ServeCommon.getFormData(request, response)
     )
       .next()
       .flatMap(data -> Mono.just(""));
 
+    // The session cookie should have been sent by the client automatically
+    Cookie sessionCookie = request.cookies().get("SESSIONID") != null
+      ? request.cookies().get("SESSIONID").stream().findFirst().orElse(null)
+      : null;
+    // if (sessionCookie != null) {
+    //   System.out.println("Session ID: " + sessionCookie.value());
+    // }
     // Need to find another way to get hostname
     response.header(
       "location",
@@ -59,6 +69,7 @@ public class ServeHttp3 {
   ) {
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Get HTTP/3");
+    response.addCookie(ServeCommon.generateSessionId());
     Mono<String> responseContent = ServeCommon.responseTextR2DBC(
       request,
       response
@@ -104,6 +115,7 @@ public class ServeHttp3 {
     )
       .last()
       .flatMap(data -> Mono.just(""));
+
     response.status(204);
     response.header("content-type", "application/json");
     response.header(
