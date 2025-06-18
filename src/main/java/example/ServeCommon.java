@@ -244,7 +244,7 @@ public class ServeCommon {
     // Not right - this needs to be a flux not mono
     Mono<String> monoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringHttpData
-    ).flatMap(ServeCommon::doFilter);
+    ).flatMap(a -> ServeCommon.doFilter(a, request));
     return monoMapString;
   }
 
