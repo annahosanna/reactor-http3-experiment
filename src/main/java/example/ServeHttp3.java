@@ -2,6 +2,7 @@ package example;
 
 import example.FortuneDatabase;
 import example.impl.BooleanObject;
+import example.impl.ContentData;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -87,6 +88,13 @@ public class ServeHttp3 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    ContentData contentData = new ContentData(request);
+    Mono<ContentData> contentDataMono = Mono.just(contentData);
+    // Now I just need to chain everything together
+    // Get the data.
+    // Validate the data.
+    // Call the routines to add to DB
+    contentDataMono.flatMap(cdm -> {return cdm});
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Put HTTP/3");
     // Disposable testAuthenticated =
