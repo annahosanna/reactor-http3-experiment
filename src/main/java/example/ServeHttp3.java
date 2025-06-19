@@ -78,6 +78,11 @@ public class ServeHttp3 {
     return response.sendString(responseContent);
   }
 
+  // Record the session ID, and map of key/value pairs
+  // Map<String, Map<String, String>> data = new Map<>();
+  // Although I could store it as {"SESSIONID": "SessionID","whatever": "value"}
+  // This would make it easier to pass around, but sessionid is no longer associated tightly with the data
+  // And there would be no way to know if sessionid was passed in from a user
   public static NettyOutbound processPutV3(
     HttpServerRequest request,
     HttpServerResponse response
@@ -98,6 +103,22 @@ public class ServeHttp3 {
       response.header("content-type", "text/html");
       return response.sendString(Mono.just("<html>Access Denied</html>"));
     }
+    // 422 Unprocessable Content if SESSIONID is missing
+    BooleanObject sessionidResult = new BooleanObject();
+    Mono.just(request)
+      .flatMap(aRequest ->
+        ServeCommon.checkSESSIONIDCookie(aRequest, sessionidResult)
+      )
+      .then()
+      .subscribe();
+    if (sessionidResult.getValue() == false) {
+      response.status(422);
+      response.header("content-type", "text/html");
+      return response.sendString(
+        Mono.just("<html>SESSIONID is missing</html>")
+      );
+    }
+
     if (
       request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
       request

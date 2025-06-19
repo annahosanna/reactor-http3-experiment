@@ -154,7 +154,19 @@ public class FortuneDatabaseR2DBC {
     }
   }
 
-  // This works fine via jdbc
+  // This automatically adds ID and TIME on every insert
+  // Time is from EPOCH UTC (not local timezone)
+  // CREATE TABLE IF NOT EXISTS DATA (
+  //     ID IDENTITY,
+  //     SESSIONID VARCHAR(255),
+  //     KEY VARCHAR(255),
+  //     VALUE VARCHAR(255),
+  //     TIME BIGINT DEFAULT DATEDIFF(
+  //        'MILLISECOND',
+  //        TIMESTAMP '1970-01-01 00:00:00',
+  //        CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+  //   )
+
   public static void addFortune(String fortune, HttpServerRequest request) {
     System.out.println("Adding fortune - via string: " + fortune);
     H2ConnectionFactory connectionFactory = new H2ConnectionFactory(

@@ -9,19 +9,41 @@ import reactor.core.publisher.Mono;
 
 // import java.util.concurrent.atomic.AtomicBoolean;
 
-// Your asking yourself, isn't there already a class for this?
-// It has to do with scope
+// This class just holds data, but does not call any processing methods.
+// Then it can be passed to a flux or mono
+
 public class ContentData {
 
+  // The Key/Value pairs (where each map has two values {"Key":"whatever","Value":"whateverelse"})
+  // Regular map in case there are duplicate keys
   private List<Map<String, String>> jsonArrayMap = null;
+  // The SESSIONID cookie value, so that it only needs to be resolved once
   private String sessionid = null;
+  // A Hash Map of cookies (loses data to duplicates)
+  private Map<String, String> cookies = null;
+  // A Hash Map of headers (loses data to duplicates)
+  private Map<String, String> headers = null;
 
-  public ContentData(List<Map<String, String>> jsonArrayMap, String sessionid) {
-    this.jsonArrayMap = jsonArrayMap;
+  // This object will not work if multiple clients were combined:
+  // List<Map<String,Map<String,String>>>
+  // Or just one:
+  // Could be Map<String, Map<String, String>>
+  // Or the values could be seperate
+  // In fact the constructor should just take request, and resolve the rest.
+  public ContentData(Map<String, String> keyValueMap, String sessionid) {
+    this.jsonArrayMap = keyValueMap;
     this.sessionid = sessionid;
   }
 
-  public List<Map<String, String>> getArrayMap() {
+  // public ContentData(
+  //   Map<String, Map<String, String>> sessionidWithkeyValueMap
+  // ) {
+  //   // Since this is a map it could actually handle multiple sessionid.
+  //   this.jsonArrayMap = jsonArrayMap;
+  //   this.sessionid = sessionid;
+  // }
+
+  public Map<String, String> getArrayMap() {
     return this.jsonArrayMap;
   }
 
