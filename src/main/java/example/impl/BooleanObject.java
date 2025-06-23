@@ -19,4 +19,14 @@ public class BooleanObject {
   public void setValue(boolean value) {
     this.value.set(value);
   }
+
+  // This returns false if the value was already true
+  public boolean flipToTrue() {
+    return this.value.compareAndSet(false, true);
+  }
+
+  // This returns false if the value was already false
+  public boolean flipToFalse() {
+    return this.value.compareAndSet(true, false);
+  }
 }

@@ -1,5 +1,6 @@
 package example.impl;
 
+import example.impl.BooleanObject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
+
+// This object will not work if multiple clients were combined:
+// List<Map<String,Map<String,String>>>
+// Or just one:
+// Could be Map<String, Map<String, String>>
+// Or the values could be seperate
+// In fact the constructor should just take request, and resolve the rest.
 
 // Methods should pass this - then I can use ServeCommon.java.
 // Each setter returns 'this' -> then it can just be passed along the pipeline
@@ -32,28 +40,33 @@ public class ContentData {
   // A Hash Map of headers (loses data to duplicates) - which headers do I care about
   private Map<String, String> headers = null;
   // Some default values
-  private integer statusCode = 401;
-  private String message = "Unauthorized";
-  private HttpServerRequest request = null;
-
-  // This object will not work if multiple clients were combined:
-  // List<Map<String,Map<String,String>>>
-  // Or just one:
-  // Could be Map<String, Map<String, String>>
-  // Or the values could be seperate
-  // In fact the constructor should just take request, and resolve the rest.
+  private int statusCode = 401;
+  private String message = null;
+  // Make sure the value is assigned once, and cannot be changed
+  // An attempt to change it just returns the current value
+  private BooleanObject hasSetMethod = new BooleanObject();
+  private BooleanObject hasSetSessionID = new BooleanObject();
+  private BooleanObject hasSetRawJSON = new BooleanObject();
+  private BooleanObject hasSetHeaders = new BooleanObject();
+  private BooleanObject hasSetRawInputString = new BooleanObject();
+  private BooleanObject hasSetJSONArrayMap = new BooleanObject();
+  private BooleanObject hasSetMessage = new BooleanObject();
+  private BooleanObject hasSetStatusCode = new BooleanObject();
 
   public ContentData(HttpServerRequest request) {
-    this.request = request;
-  }
-
-  public void setMethod(String method) {
-    this.method = method;
+    // extract each variable from request.
+    // No need to have request as part of this object
+    this.method = new String(request.method().name());
+    // This actually a bit more complex, since I need to check for session id
+    this.sessionid = new String(request.cookies().get("SESSIONID").value());
   }
 
   // This way a modification to one method does not need to be duplicated
   public ContentData setMethod(String method) {
-    setMethod(method);
+    // Although this still doesn't have a perfect concurrency garentee
+    if (hasSetMethod.flipToTrue()) {
+      this.method = method;
+    }
     return this;
   }
 
@@ -61,12 +74,10 @@ public class ContentData {
     return this.method;
   }
 
-  public void setRawInputString(String rawInputString) {
-    this.rawInputString = rawInputString;
-  }
-
   public ContentData setRawInputString(String rawInputString) {
-    setRawInputString(rawInputString);
+    if (hasSetRawInputString.flipToTrue()) {
+      this.rawInputString = rawInputString;
+    }
     return this;
   }
 
@@ -75,24 +86,20 @@ public class ContentData {
   }
 
   public ContentData setRawJSON(String rawJSON) {
-    setRawJSON(rawJSON);
+    if (this.hasSetRawJSON.flipToTrue()) {
+      this.rawJSON = rawJSON;
+    }
     return this;
-  }
-
-  public void setRawJSON(String rawJSON) {
-    this.rawJSON = rawJSON;
   }
 
   public String getRawJSON() {
     return this.rawJSON;
   }
 
-  public void setSessionId(String sessionid) {
-    this.sessionid = sessionid;
-  }
-
   public ContentData setSessionId(String sessionid) {
-    setSessionId(sessionid);
+    if (this.hasSetSessionID.flipToTrue()) {
+      this.sessionid = sessionid;
+    }
     return this;
   }
 
@@ -100,12 +107,10 @@ public class ContentData {
     return this.sessionid;
   }
 
-  public void setJSONMap(List<Map<String, String>> jsonMap) {
-    this.jsonArrayMap = jsonMap;
-  }
-
   public ContentData setJSONMap(List<Map<String, String>> jsonMap) {
-    setJSONMap(jsonMap);
+    if (this.hasSetJSONArrayMap.flipToTrue()) {
+      this.jsonArrayMap = jsonMap;
+    }
     return this;
   }
 
@@ -113,12 +118,10 @@ public class ContentData {
     return Flux.fromIterable(this.jsonArrayMap);
   }
 
-  public void setHeaders(Map<String, String> headers) {
-    this.headers = headers;
-  }
-
   public ContentData setHeaders(Map<String, String> headers) {
-    setHeaders(headers);
+    if (this.hasSetHeaders.flipToTrue()) {
+      this.headers = headers;
+    }
     return this;
   }
 
@@ -126,12 +129,10 @@ public class ContentData {
     return this.headers;
   }
 
-  public void setMessage(String message) {
-    this.message = message;
-  }
-
   public ContentData setMessage(String message) {
-    setMessage(message);
+    if (this.hasSetMessage.flipToTrue) {
+      this.message = message;
+    }
     return this;
   }
 
@@ -139,16 +140,14 @@ public class ContentData {
     return this.message;
   }
 
-  public integer getStatusCode() {
+  public int getStatusCode() {
     return this.statusCode;
   }
 
-  public void setStatusCode(integer statusCode) {
-    this.statusCode = statusCode;
-  }
-
-  public ContentData setStatusCode(integer statusCode) {
-    setStatusCode(statusCode);
+  public ContentData setStatusCode(int statusCode) {
+    if (this.hasSetStatusCode.flipToTrue()) {
+      this.statusCode = statusCode;
+    }
     return this;
   }
 }
