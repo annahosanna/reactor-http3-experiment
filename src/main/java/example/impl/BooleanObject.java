@@ -3,7 +3,8 @@ package example.impl;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // Your asking yourself, isn't there already a class for this?
-// It has to do with scope
+// The purpose of this simple class is to provide an ability to
+// change the value of a boolean, without using an 'if'
 public class BooleanObject {
 
   private AtomicBoolean value = new AtomicBoolean();

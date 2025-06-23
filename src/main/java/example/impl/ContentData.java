@@ -46,8 +46,9 @@ public class ContentData {
   // A Hash Map of headers (loses data to duplicates) - which headers do I care about
   private HttpHeaders headers = null;
   // Some default values
-  private int statusCode = 401;
-  private String message = null;
+  private int responseStatusCode = 401;
+  private String responseMessage = null;
+  private String responseContentType = null;
   // Make sure the value is assigned once, and cannot be changed
   // An attempt to change it just returns the current value
   private BooleanObject hasSetMethod = new BooleanObject();
@@ -56,8 +57,9 @@ public class ContentData {
   private BooleanObject hasSetHeaders = new BooleanObject();
   private BooleanObject hasSetRawInputString = new BooleanObject();
   private BooleanObject hasSetJSONArrayMap = new BooleanObject();
-  private BooleanObject hasSetMessage = new BooleanObject();
-  private BooleanObject hasSetStatusCode = new BooleanObject();
+  private BooleanObject hasSetResponseMessage = new BooleanObject();
+  private BooleanObject hasSetResponseStatusCode = new BooleanObject();
+  private BooleanObject hasSetResponseContentType = new BooleanObject();
 
   public ContentData(HttpServerRequest request) {
     // extract each variable from request.
@@ -95,6 +97,53 @@ public class ContentData {
       })
       .subscribeOn(Schedulers.boundedElastic());
     this.headers = request.requestHeaders();
+    String expectedToken = "Bearer secret-token";
+    // -------------
+    if (
+      (this.headers.get(HttpHeaderNames.AUTHORIZATION) != null) &&
+      (expectedToken.equals(this.headers.get(HttpHeaderNames.AUTHORIZATION)))
+    ) {
+      // Yay authenticated
+    } else {
+      // Not authenticated
+      this.responseStatusCode = 401;
+      this.responseContentType = "text/html";
+      this.responseMessage = "<html>Access Denied</html>";
+    }
+    // .then()
+    // .subscribe();
+    // 422 Unprocessable Content if SESSIONID is missing
+    if (this.sessionid == null) {
+      this.responseStatusCode = 422;
+      this.responseContentType = "text/html";
+      this.responseMessage = "<html>SESSIONID is missing</html>";
+    }
+
+    if (
+      (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) &&
+      (this.headers.get(HttpHeaderNames.CONTENT_TYPE)
+          .toLowerCase()
+          .startsWith(
+            HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+          )) &&
+      (this.method == "PUT")
+    ) {
+      // Yay PUT
+    } else if (
+      (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) &&
+      (this.headers.get(HttpHeaderNames.CONTENT_TYPE)
+          .toLowerCase()
+          .startsWith(
+            HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
+              .toLowerCase()
+          )) &&
+      (this.method == "POST")
+    ) {
+      // Yay POST
+    } else {
+      this.responseStatusCode = 415;
+      this.responseMessage = "";
+    }
   }
 
   public Mono<ContentData> checkAuthentication(String token) {
@@ -185,35 +234,46 @@ public class ContentData {
     return Flux.fromIterable(this.jsonArrayMap);
   }
 
-  public ContentData setHeaders(Map<String, String> headers) {
-    if (this.hasSetHeaders.flipToTrue()) {
-      this.headers = headers;
-    }
-    return this;
-  }
+  // public ContentData setHeaders(Map<String, String> headers) {
+  //   if (this.hasSetHeaders.flipToTrue()) {
+  //     this.headers = headers;
+  //   }
+  //   return this;
+  // }
 
-  public Map<String, String> getHeaders() {
+  public HttpHeaders getHeaders() {
     return this.headers;
   }
 
   public ContentData setMessage(String message) {
-    if (this.hasSetMessage.flipToTrue()) {
-      this.message = message;
+    if (this.hasSetResponseMessage.flipToTrue()) {
+      this.responseMessage = message;
     }
     return this;
   }
 
-  public String getMessage() {
-    return this.message;
+  public String getResponseMessage() {
+    return this.responseMessage;
   }
 
   public int getStatusCode() {
-    return this.statusCode;
+    return this.responseStatusCode;
   }
 
   public ContentData setStatusCode(int statusCode) {
-    if (this.hasSetStatusCode.flipToTrue()) {
-      this.statusCode = statusCode;
+    if (this.hasSetResponseStatusCode.flipToTrue()) {
+      this.responseStatusCode = statusCode;
+    }
+    return this;
+  }
+
+  public String getResponseContentType() {
+    return this.responseContentType;
+  }
+
+  public ContentData setResponseContentType(String contentType) {
+    if (this.hasSetResponseContentType.flipToTrue()) {
+      this.responseContentType = contentType;
     }
     return this;
   }

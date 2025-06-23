@@ -104,45 +104,6 @@ public class ServeHttp3 {
     System.out.println("Put HTTP/3");
     // Disposable testAuthenticated =
     // We know if the request is authenticated, but how to unwrap the value?
-    BooleanObject authenticatedResult = new BooleanObject();
-    Mono.just(request)
-      .flatMap(aRequest ->
-        ServeCommon.checkAuthenticationHeader(aRequest, authenticatedResult)
-      )
-      .then()
-      .subscribe();
-    if (authenticatedResult.getValue() == false) {
-      response.status(401);
-      response.header("content-type", "text/html");
-      return response.sendString(Mono.just("<html>Access Denied</html>"));
-    }
-    // 422 Unprocessable Content if SESSIONID is missing
-    BooleanObject sessionidResult = new BooleanObject();
-    Mono.just(request)
-      .flatMap(aRequest ->
-        ServeCommon.checkSESSIONIDCookie(aRequest, sessionidResult)
-      )
-      .then()
-      .subscribe();
-    if (sessionidResult.getValue() == false) {
-      response.status(422);
-      response.header("content-type", "text/html");
-      return response.sendString(
-        Mono.just("<html>SESSIONID is missing</html>")
-      );
-    }
-
-    if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
-    ) {} else {
-      response.status(415);
-      return response.sendString(Mono.just(""));
-    }
 
     Mono<String> monoString = Flux.from(
       ServeCommon.processPutData(request, response)
