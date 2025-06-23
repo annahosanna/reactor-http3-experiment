@@ -95,12 +95,9 @@ public class ServeHttp3 {
     // Validate the data.
     // Call the routines to add to DB
     Mono<String> returnContent = contentDataMono
-      // Mono<String> returnContent = Mono.just(new ContentData(request))
-      .flatMap(cdm -> cdm.checkAthentication("Token"))
-      .flatmap(cdm -> {
-        return cdm.checkSESSIONID();
-      })
-      .flatmap(cdm -> {
+      .flatMap(cdm -> cdm.checkAuthentication("Token"))
+      .flatMap(cdm -> cdm.checkSESSIONID())
+      .flatMap(cdm -> {
         return cdm.processData();
       });
     System.out.println("Client connected to " + request.hostName().toString());
