@@ -1,15 +1,21 @@
 package example.impl;
 
 import example.impl.BooleanObject;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.server.HttpServerRequest;
-import reactor.netty.http.server.HttpServerResponse;
 
 // This object will not work if multiple clients were combined:
 // List<Map<String,Map<String,String>>>
@@ -27,7 +33,7 @@ public class ContentData {
   private String method = null;
   // Based on the method this should either be processed like a POST urlencoded string,
   // or a JSON string - either way the format of the data needs to be validated.
-  private String rawInputString = null;
+  private Mono<String> rawInputString = null;
   // The raw JSON string in case it needs to be validated or parsed
   private String rawJSON = null;
   // The Key/Value pairs (where each map has two values {"Key":"whatever","Value":"whateverelse"})
@@ -38,7 +44,7 @@ public class ContentData {
   // A Hash Map of cookies (loses data to duplicates) (but I do not care about other cookies)
   // private Map<String, String> cookies = null;
   // A Hash Map of headers (loses data to duplicates) - which headers do I care about
-  private Map<String, String> headers = null;
+  private HttpHeaders headers = null;
   // Some default values
   private int statusCode = 401;
   private String message = null;
@@ -58,7 +64,68 @@ public class ContentData {
     // No need to have request as part of this object
     this.method = new String(request.method().name());
     // This actually a bit more complex, since I need to check for session id
-    this.sessionid = new String(request.cookies().get("SESSIONID").value());
+    // this.sessionid = new String(request.cookies().get("SESSIONID"));
+    Map<CharSequence, List<Cookie>> cookieMapList = request.allCookies();
+    for (Map.Entry<
+      CharSequence,
+      List<Cookie>
+    > entry : cookieMapList.entrySet()) {
+      List<Cookie> cookieList = entry.getValue();
+      for (Cookie cookie : cookieList) {
+        if (cookie.name() == "SESSIONID") {
+          if (!cookie.value().isBlank()) {
+            this.sessionid = cookie.value();
+          }
+        }
+      }
+    }
+
+    this.rawInputString = request
+      .receive()
+      .aggregate()
+      .asString()
+      .flatMap(str -> {
+        if (str.length() > 0) {
+          System.out.println("Received data");
+          return Mono.just(str);
+        } else {
+          System.out.println("No data received");
+          return Mono.empty();
+        }
+      })
+      .subscribeOn(Schedulers.boundedElastic());
+    this.headers = request.requestHeaders();
+  }
+
+  public Mono<ContentData> checkAuthentication(String token) {
+    // Check the method - if its GET then return as normal.
+    // If its PUT or POST check the value of the token
+    // If its wrong return Mono.empty()
+    // Otherwise proceed as nomral
+    // Set status 401
+    // Set failure message
+    return Mono.just(this);
+  }
+
+  public Mono<ContentData> checkSESSIONID() {
+    // Check that session id is set if this is PUT or POST
+    // Set status 422 and return Mono.empty()
+    // otherwise return normally.
+    return Mono.just(this);
+  }
+
+  public Mono<String> processData() {
+    // Check that POST + Content_Type X_WWW_FORM_URLENCODED
+    // Or PUT with content type APPLICATION_JSON
+    // else set status code 415
+    // else GET return html
+    // process the data branching for PUT and POST
+    // Finally both should result in a JSON string
+    // Set status 422 and return Mono.empty()
+    // otherwise return normally.
+    // This return type should be the string (html)
+    // sent to the client
+    return Mono.just("this");
   }
 
   // This way a modification to one method does not need to be duplicated
@@ -74,14 +141,14 @@ public class ContentData {
     return this.method;
   }
 
-  public ContentData setRawInputString(String rawInputString) {
+  public ContentData setRawInputString(Mono<String> rawInputString) {
     if (hasSetRawInputString.flipToTrue()) {
       this.rawInputString = rawInputString;
     }
     return this;
   }
 
-  public String getRawInputString() {
+  public Mono<String> getRawInputString() {
     return this.rawInputString;
   }
 
@@ -130,7 +197,7 @@ public class ContentData {
   }
 
   public ContentData setMessage(String message) {
-    if (this.hasSetMessage.flipToTrue) {
+    if (this.hasSetMessage.flipToTrue()) {
       this.message = message;
     }
     return this;

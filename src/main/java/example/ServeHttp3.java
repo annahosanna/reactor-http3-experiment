@@ -94,7 +94,15 @@ public class ServeHttp3 {
     // Get the data.
     // Validate the data.
     // Call the routines to add to DB
-    contentDataMono.flatMap(cdm -> {return cdm});
+    Mono<String> returnContent = contentDataMono
+      // Mono<String> returnContent = Mono.just(new ContentData(request))
+      .flatMap(cdm -> cdm.checkAthentication("Token"))
+      .flatmap(cdm -> {
+        return cdm.checkSESSIONID();
+      })
+      .flatmap(cdm -> {
+        return cdm.processData();
+      });
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Put HTTP/3");
     // Disposable testAuthenticated =
