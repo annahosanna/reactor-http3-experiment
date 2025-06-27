@@ -143,14 +143,33 @@ public class FortuneDatabaseR2DBC {
     return Mono.just("");
   }
 
-  public static void addFortune(
-    Map<String, String> fortune,
-    HttpServerRequest request
+  // public static void addData(String sessionid, Map<String, String> fortune) {
+  //   // System.out.println("Adding fortune - via map");
+
+  //   for (Map.Entry<String, String> entry : fortune.entrySet()) {
+  //     addData(sessionid, entry.getKey(), entry.getValue());
+  //   }
+  // }
+
+  public static void addFortuneData(
+    String sessionid,
+    Map<String, String> fortune
   ) {
     // System.out.println("Adding fortune - via map");
 
     for (Map.Entry<String, String> entry : fortune.entrySet()) {
-      addFortune(entry.getValue(), request);
+      addFortuneData(sessionid, entry.getKey(), entry.getValue());
+    }
+  }
+
+  public static void addDataData(
+    String sessionid,
+    Map<String, String> fortune
+  ) {
+    // System.out.println("Adding fortune - via map");
+
+    for (Map.Entry<String, String> entry : fortune.entrySet()) {
+      addDataData(sessionid, entry.getKey(), entry.getValue());
     }
   }
 
@@ -166,6 +185,88 @@ public class FortuneDatabaseR2DBC {
   //        TIMESTAMP '1970-01-01 00:00:00',
   //        CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
   //   )
+
+  public static void addFortuneData(
+    String sessionid,
+    String key,
+    String value
+  ) {
+    // System.out.println("Adding fortune - via string: " + fortune);
+    H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
+      io.r2dbc.h2.H2ConnectionConfiguration.builder()
+        .url("tcp://localhost:9092/mem:data")
+        .username("sa")
+        .password("")
+        .build()
+    );
+
+    String trimmedSessionId = new String(truncateString(sessionid, 254));
+    String trimmedKey = new String(truncateString(key, 254));
+    String trimmedValue = new String(truncateString(value, 254));
+    try {
+      Class.forName("org.h2.Driver");
+      Mono<H2Result> insertData = Mono.from(connectionFactory.create()).flatMap(
+        connection ->
+          connection
+            .createStatement(
+              "INSERT INTO  DATA (SESSIONID, KEY, VALUE) VALUES ($1, $2, $3)"
+            )
+            .bind("$1", trimmedSessionId)
+            .bind("$2", trimmedKey)
+            .bind("$3", trimmedValue)
+            .execute()
+            .next()
+            .doFinally(signalType -> connection.close())
+      );
+      Disposable disposable = insertData
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
+      // return insertFortune;
+    } catch (Exception e) {
+      System.out.println("Error in addFortune");
+      e.printStackTrace();
+      // fortune = "";
+    }
+  }
+
+  public static void addDataData(String sessionid, String key, String value) {
+    // System.out.println("Adding fortune - via string: " + fortune);
+    H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
+      io.r2dbc.h2.H2ConnectionConfiguration.builder()
+        .url("tcp://localhost:9092/mem:data")
+        .username("sa")
+        .password("")
+        .build()
+    );
+
+    String trimmedSessionId = new String(truncateString(sessionid, 254));
+    String trimmedKey = new String(truncateString(key, 254));
+    String trimmedValue = new String(truncateString(value, 254));
+    try {
+      Class.forName("org.h2.Driver");
+      Mono<H2Result> insertData = Mono.from(connectionFactory.create()).flatMap(
+        connection ->
+          connection
+            .createStatement(
+              "INSERT INTO  DATA (SESSIONID, KEY, VALUE) VALUES ($1, $2, $3)"
+            )
+            .bind("$1", trimmedSessionId)
+            .bind("$2", trimmedKey)
+            .bind("$3", trimmedValue)
+            .execute()
+            .next()
+            .doFinally(signalType -> connection.close())
+      );
+      Disposable disposable = insertData
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
+      // return insertFortune;
+    } catch (Exception e) {
+      System.out.println("Error in addFortune");
+      e.printStackTrace();
+      // fortune = "";
+    }
+  }
 
   public static void addFortune(String fortune, HttpServerRequest request) {
     System.out.println("Adding fortune - via string: " + fortune);

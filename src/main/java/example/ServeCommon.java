@@ -418,6 +418,38 @@ public class ServeCommon {
    * @param value
    * @return
    */
+  public static void updateFortuneDBWithStringR2DBC(
+    String sessionid, Map<String, String> value
+  ) {
+    if (!Objects.isNull(value)) {
+      FortuneDatabaseR2DBC.addFortuneData(sessionid,value);
+    } else {
+      // System.out.println("No value");
+    }
+    // return Flux.empty();
+  }
+
+  /**
+   * Update the R2DBC database with a Map
+   * @param value
+   * @return
+   */
+  public static void updateDataDBWithStringR2DBC(
+    String sessionid, Map<String, String> value
+  ) {
+    if (!Objects.isNull(value)) {
+      FortuneDatabaseR2DBC.addDataData(sessionid,value);
+    } else {
+      // System.out.println("No value");
+    }
+    // return Flux.empty();
+  }
+
+  /**
+   * Update the R2DBC database with a Map
+   * @param value
+   * @return
+   */
   public static Flux<Map<String, String>> updateDBWithStringR2DBC(
     Map<String, String> value,
     HttpServerRequest request
@@ -615,7 +647,7 @@ public class ServeCommon {
    * @param value  the Mono<String> with raw text
    * @return       the extracted values
    */
-  public static Flux<String> doConvertJSONArrayToValues(Mono<String> value) {
+  public static Flux<Map<String, String>> doConvertJSONArrayToValues(Mono<String> value) {
     System.out.println(
       "doConvertJSONArrayToValues - Mono<String> -> Flux<String>"
     );
@@ -631,7 +663,7 @@ public class ServeCommon {
    * @param result  a raw text string
    * @return        the extracted values
    */
-  public static Flux<String> doConvertJSONArrayToValues(String result) {
+  public static Flux<Map<String,String>> doConvertJSONArrayToValues(String result) {
     System.out.println("doConvertJSONArrayToValues - String -> Flux<String>");
 
     System.out.println(result);
@@ -646,20 +678,7 @@ public class ServeCommon {
         List<Map<String, String>> returnValue = new ObjectMapper()
           .readValue(result, new TypeReference<List<Map<String, String>>>() {});
 
-        List<String> values = new ArrayList<String>();
-
-        for (Map<String, String> element : returnValue) {
-          for (Map.Entry<String, String> entry : element.entrySet()) {
-            if (entry.getValue() == null) {
-              continue;
-            }
-            values.add(entry.getValue());
-          }
-        }
-        if (values.toArray().length == 0) {
-          return Flux.empty();
-        }
-        return Flux.fromIterable(values);
+        return Flux.fromIterable(returnValue);
       } catch (Exception e) {
         e.printStackTrace();
         // response.status(422);
@@ -672,7 +691,6 @@ public class ServeCommon {
       return Flux.empty();
     }
   }
-
   /**
    * This method consumes the output of the response,
    * and validates that that the String conforms to the JSON form List<Map<String,String>>
@@ -704,6 +722,54 @@ public class ServeCommon {
   ) {
     Flux<String> dbFlux = fluxString.flatMap(s -> {
       updateDBWithStringR2DBC(s, request);
+      return Flux.just("");
+    });
+    Mono<String> waiter = dbFlux.last("");
+    return waiter;
+  }
+
+  /**
+   * Update the database with a Flux of k/v pairs
+   * @param fluxString
+   * @return
+   */
+  public static Mono<String> updateFortuneDBWithFluxString(
+    String sessionid,Flux<Map<String,String>> fluxMap
+  ) {
+    Flux<String> dbFlux = fluxMap.flatMap(fm -> {
+      updateFortuneDBWithStringR2DBC(sessionid, fm);
+      return Flux.just("");
+    });
+    Mono<String> waiter = dbFlux.last("");
+    return waiter;
+  }
+
+  /**
+   * Update the database with a Flux of k/v pairs
+   * @param fluxString
+   * @return
+   */
+  public static Mono<String> updateDataDBWithFluxString(
+    String sessionid,Flux<Map<String,String>> fluxMap
+  ) {
+    Flux<String> dbFlux = fluxMap.flatMap(fm -> {
+      updateDataDBWithStringR2DBC(sessionid, fm);
+      return Flux.just("");
+    });
+    Mono<String> waiter = dbFlux.last("");
+    return waiter;
+  }
+
+  /**
+   * Update the database with a Flux of k/v pairs
+   * @param fluxString
+   * @return
+   */
+  public static Mono<String> updateDBWithFluxKeyPair(
+    String sessionid, Flux<Map<String, String>> fluxKeyPair
+  ) {
+    Flux<String> dbFlux = fluxKeyPair.flatMap(s -> {
+      updateDBWithStringR2DBC(sessionid, s);
       return Flux.just("");
     });
     Mono<String> waiter = dbFlux.last("");

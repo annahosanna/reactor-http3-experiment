@@ -1,5 +1,7 @@
 package example.impl;
 
+import example.FortuneDatabaseR2DBC;
+import example.ServeCommon;
 import example.impl.BooleanObject;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -31,6 +33,7 @@ public class ContentData {
   // This only matters for POST requests and is not a requirement.
   // But the raw POST string should be processed here and turned into a JSON string.
   private String method = null;
+  private String validatedMethod = null;
   // Based on the method this should either be processed like a POST urlencoded string,
   // or a JSON string - either way the format of the data needs to be validated.
   private Mono<String> rawInputString = null;
@@ -49,6 +52,7 @@ public class ContentData {
   private int responseStatusCode = 401;
   private String responseMessage = null;
   private String responseContentType = null;
+  private Map<CharSequence, List<Cookie>> cookieMapList = null;
   // Make sure the value is assigned once, and cannot be changed
   // An attempt to change it just returns the current value
   private BooleanObject hasSetMethod = new BooleanObject();
@@ -60,6 +64,7 @@ public class ContentData {
   private BooleanObject hasSetResponseMessage = new BooleanObject();
   private BooleanObject hasSetResponseStatusCode = new BooleanObject();
   private BooleanObject hasSetResponseContentType = new BooleanObject();
+  private BooleanObject hasSetValidatedMethod = new BooleanObject();
 
   public ContentData(HttpServerRequest request) {
     // extract each variable from request.
@@ -67,21 +72,8 @@ public class ContentData {
     this.method = new String(request.method().name());
     // This actually a bit more complex, since I need to check for session id
     // this.sessionid = new String(request.cookies().get("SESSIONID"));
-    Map<CharSequence, List<Cookie>> cookieMapList = request.allCookies();
-    for (Map.Entry<
-      CharSequence,
-      List<Cookie>
-    > entry : cookieMapList.entrySet()) {
-      List<Cookie> cookieList = entry.getValue();
-      for (Cookie cookie : cookieList) {
-        if (cookie.name() == "SESSIONID") {
-          if (!cookie.value().isBlank()) {
-            this.sessionid = cookie.value();
-          }
-        }
-      }
-    }
-
+    this.cookieMapList = request.allCookies();
+    this.headers = request.requestHeaders();
     this.rawInputString = request
       .receive()
       .aggregate()
@@ -96,12 +88,21 @@ public class ContentData {
         }
       })
       .subscribeOn(Schedulers.boundedElastic());
-    this.headers = request.requestHeaders();
-    String expectedToken = "Bearer secret-token";
+  }
+
+  public Mono<ContentData> checkAuthentication(String token) {
+    // Check the method - if its GET then return as normal.
+    // If its PUT or POST check the value of the token
+    // If its wrong return Mono.empty()
+    // Otherwise proceed as nomral
+    // Set status 401
+    // Set failure message
+
+    // String expectedToken = "Bearer secret-token";
     // -------------
     if (
       (this.headers.get(HttpHeaderNames.AUTHORIZATION) != null) &&
-      (expectedToken.equals(this.headers.get(HttpHeaderNames.AUTHORIZATION)))
+      (token.equals(this.headers.get(HttpHeaderNames.AUTHORIZATION)))
     ) {
       // Yay authenticated
     } else {
@@ -109,16 +110,39 @@ public class ContentData {
       this.responseStatusCode = 401;
       this.responseContentType = "text/html";
       this.responseMessage = "<html>Access Denied</html>";
+      return Mono.empty();
     }
-    // .then()
-    // .subscribe();
-    // 422 Unprocessable Content if SESSIONID is missing
+
+    return Mono.just(this);
+  }
+
+  public Mono<ContentData> checkSESSIONID() {
+    // Check that session id is set if this is PUT or POST
+    // Set status 422 and return Mono.empty()
+    // otherwise return normally.
+    for (Map.Entry<
+      CharSequence,
+      List<Cookie>
+    > entry : this.cookieMapList.entrySet()) {
+      List<Cookie> cookieList = entry.getValue();
+      for (Cookie cookie : cookieList) {
+        if (cookie.name() == "SESSIONID") {
+          if (!cookie.value().isBlank()) {
+            this.sessionid = cookie.value();
+          }
+        }
+      }
+    }
     if (this.sessionid == null) {
       this.responseStatusCode = 422;
       this.responseContentType = "text/html";
       this.responseMessage = "<html>SESSIONID is missing</html>";
+      return Mono.empty();
     }
+    return Mono.just(this);
+  }
 
+  public Mono<ContentData> validateMethod() {
     if (
       (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) &&
       (this.headers.get(HttpHeaderNames.CONTENT_TYPE)
@@ -143,24 +167,71 @@ public class ContentData {
     } else {
       this.responseStatusCode = 415;
       this.responseMessage = "";
+      return Mono.empty();
     }
-  }
-
-  public Mono<ContentData> checkAuthentication(String token) {
-    // Check the method - if its GET then return as normal.
-    // If its PUT or POST check the value of the token
-    // If its wrong return Mono.empty()
-    // Otherwise proceed as nomral
-    // Set status 401
-    // Set failure message
     return Mono.just(this);
   }
 
-  public Mono<ContentData> checkSESSIONID() {
-    // Check that session id is set if this is PUT or POST
-    // Set status 422 and return Mono.empty()
-    // otherwise return normally.
-    return Mono.just(this);
+  public Mono<String> processPostData() {
+    // --------------------- POST ---------------------
+    // How about post be for adding fortunes
+    // Requires SESSIONID
+    // Scrub the input string and split at & (each flux is "key=value")
+    Flux<String> fluxString = ServeCommon.convertMonoToFlux(
+      this.rawInputString
+    );
+    // This is a post so split Flux of "Key=Value" -> Map<String, String>
+    Mono<Map<String, String>> monoMapStringString = fluxString.collectMap(
+      ServeCommon::getFormParamName,
+      ServeCommon::getFormParamValue
+    );
+    // Convert Map<String, String> to JSON
+    Mono<String> convertMonoMapString =
+      ServeCommon.convertMonoMapToMonoStringGeneric(monoMapStringString);
+
+    // JSON -> Flux<Map<String, String>>
+    Flux<Map<String, String>> fluxString3 =
+      ServeCommon.doConvertJSONArrayToValues(convertMonoMapString);
+    Mono<String> aMonoString = ServeCommon.updateFortuneDBWithFluxString(
+      this.sessionid,
+      fluxString3
+    );
+    return Mono.just("");
+  }
+
+  public Mono<String> processPutData() {
+    // ---------------------PUT --------------------
+    // For adding metadata
+    // Requires SESSIONID
+    Flux<Map<String, String>> fluxPutString =
+      ServeCommon.doConvertJSONArrayToValues(this.rawInputString);
+    // Update the database
+    Mono<String> aMonoString1 = ServeCommon.updateDataDBWithFluxString(
+      this.sessionid,
+      fluxPutString
+    );
+    return Mono.just("");
+  }
+
+  public Mono<String> processGetHtmlData() { // ----------------- GET text/html  --------------------
+    // Creates SESSIONID and returns webpage/javascript
+    // return Mono.just(htmlResponse();
+    return Mono.just("");
+  }
+
+  public Mono<String> processGetJSONData() {
+    // ----------- GET application/json ----------
+    // SESSIONID required
+    // Return fortune
+    this.responseContentType = "application/json";
+    this.responseStatusCode = 200;
+    //This returns untrusted content; however, the JS client will display it rather than being pushed by us.
+    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
+      .subscribeOn(Schedulers.boundedElastic());
+
+    Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+      return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
+    });
   }
 
   public Mono<String> processData() {
@@ -174,7 +245,7 @@ public class ContentData {
     // otherwise return normally.
     // This return type should be the string (html)
     // sent to the client
-    return Mono.just("this");
+    return Mono.just("");
   }
 
   // This way a modification to one method does not need to be duplicated
