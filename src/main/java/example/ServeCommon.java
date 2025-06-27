@@ -7,8 +7,6 @@ import example.impl.ContentTypeObject;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.FileUpload;
@@ -743,6 +741,18 @@ public class ServeCommon {
     Mono<String> waiter = dbFlux.last("");
     return waiter;
   }
+
+  /**
+   * Update the database with a Flux of k/v pairs
+   * @param fluxString
+   * @return
+   */
+  public static Flux<String> updateFortuneDBWithFluxString(
+    String sessionid,Map<String,String> fluxMap
+  ) {
+    updateFortuneDBWithStringR2DBC(sessionid, fluxMap);
+      return Flux.just("");
+    }
 
   /**
    * Update the database with a Flux of k/v pairs

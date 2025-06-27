@@ -7,6 +7,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
 import java.util.HashMap;
 import java.util.List;
@@ -52,6 +53,7 @@ public class ContentData {
   private int responseStatusCode = 401;
   private String responseMessage = null;
   private String responseContentType = null;
+  private Cookie responseCookie = null;
   private Map<CharSequence, List<Cookie>> cookieMapList = null;
   // Make sure the value is assigned once, and cannot be changed
   // An attempt to change it just returns the current value
@@ -64,6 +66,7 @@ public class ContentData {
   private BooleanObject hasSetResponseMessage = new BooleanObject();
   private BooleanObject hasSetResponseStatusCode = new BooleanObject();
   private BooleanObject hasSetResponseContentType = new BooleanObject();
+  private BooleanObject hasSetResponseCookie = new BooleanObject();
   private BooleanObject hasSetValidatedMethod = new BooleanObject();
 
   public ContentData(HttpServerRequest request) {
@@ -73,6 +76,10 @@ public class ContentData {
     // This actually a bit more complex, since I need to check for session id
     // this.sessionid = new String(request.cookies().get("SESSIONID"));
     this.cookieMapList = request.allCookies();
+    // Cookie sessionCookie = request.cookies().get("SESSIONID") != null
+    //   ? request.cookies().get("SESSIONID").stream().findFirst().orElse(null)
+    //   : null;
+    // response.addCookie(ServeCommon.generateSessionId());
     this.headers = request.requestHeaders();
     this.rawInputString = request
       .receive()
@@ -143,28 +150,67 @@ public class ContentData {
   }
 
   public Mono<ContentData> validateMethod() {
+    // Probably easier with enum and switches
+    String contentType = null;
+    String contentTypeTemp =
+      this.headers.get(HttpHeaderNames.CONTENT_TYPE).toLowerCase();
     if (
-      (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) &&
-      (this.headers.get(HttpHeaderNames.CONTENT_TYPE)
-          .toLowerCase()
-          .startsWith(
-            HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
-          )) &&
-      (this.method == "PUT")
+      contentTypeTemp.startsWith(
+        HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+      )
     ) {
-      // Yay PUT
+      contentType = "JSON";
     } else if (
-      (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) &&
-      (this.headers.get(HttpHeaderNames.CONTENT_TYPE)
+      contentTypeTemp.startsWith(
+        HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
           .toLowerCase()
-          .startsWith(
-            HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-              .toLowerCase()
-          )) &&
-      (this.method == "POST")
+      )
     ) {
-      // Yay POST
+      contentType = "URLENCODED";
+    } else if (
+      contentTypeTemp.startsWith(
+        HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
+      )
+    ) {
+      contentType = "HTML";
     } else {
+      contentType = "NONE";
+    }
+
+    String acceptEncoding = null;
+    if (
+      (this.headers.get(HttpHeaderNames.ACCEPT) != null) &&
+      this.headers.get(HttpHeaderNames.ACCEPT)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.TEXT_HTML.toString().toLowerCase())
+    ) {
+      acceptEncoding = "HTML";
+    } else if (
+      (this.headers.get(HttpHeaderNames.ACCEPT) != null) &&
+      this.headers.get(HttpHeaderNames.ACCEPT)
+        .toLowerCase()
+        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+    ) {
+      acceptEncoding = "JSON";
+    } else {
+      acceptEncoding = "NONE";
+    }
+    if ((contentType == "JSON") && (this.method == "PUT")) {
+      this.validatedMethod = "PUT";
+    } else if ((contentType == "URLENCODED") && (this.method == "POST")) {
+      this.validatedMethod = "POST";
+    } else if (
+      ((contentType == "HTML") || (acceptEncoding == "HTML")) &&
+      (this.method == "GET")
+    ) {
+      this.validatedMethod = "GETHTML";
+    } else if (
+      ((contentType == "JSON") || (acceptEncoding == "JSON")) &&
+      (this.method == "GET")
+    ) {
+      this.validatedMethod = "GETJSON";
+    } else {
+      this.validatedMethod = "";
       this.responseStatusCode = 415;
       this.responseMessage = "";
       return Mono.empty();
@@ -192,10 +238,14 @@ public class ContentData {
     // JSON -> Flux<Map<String, String>>
     Flux<Map<String, String>> fluxString3 =
       ServeCommon.doConvertJSONArrayToValues(convertMonoMapString);
-    Mono<String> aMonoString = ServeCommon.updateFortuneDBWithFluxString(
-      this.sessionid,
-      fluxString3
-    );
+    Mono<String> aFluxString = fluxString3.flatMap(fm -> {
+      ServeCommon.updateFortuneDBWithFluxString(this.sessionid, fm);
+      Map<String, String> map = new HashMap<String, String>();
+      return Flux.just(map);
+    });
+
+    Mono<String> waiter = aFluxString.last("");
+
     return Mono.just("");
   }
 
@@ -203,6 +253,7 @@ public class ContentData {
     // ---------------------PUT --------------------
     // For adding metadata
     // Requires SESSIONID
+    // This should already be in JSON format
     Flux<Map<String, String>> fluxPutString =
       ServeCommon.doConvertJSONArrayToValues(this.rawInputString);
     // Update the database
@@ -213,9 +264,9 @@ public class ContentData {
     return Mono.just("");
   }
 
-  public Mono<String> processGetHtmlData() { // ----------------- GET text/html  --------------------
-    // Creates SESSIONID and returns webpage/javascript
-    // return Mono.just(htmlResponse();
+  public Mono<String> processGetHtmlData() {
+    // ----------------- GET text/html  --------------------
+    this.responseMessage = ServeCommon.htmlResponse();
     return Mono.just("");
   }
 
@@ -232,6 +283,8 @@ public class ContentData {
     Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
       return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
     });
+
+    return createResponseText;
   }
 
   public Mono<String> processData() {
