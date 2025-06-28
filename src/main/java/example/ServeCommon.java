@@ -747,12 +747,12 @@ public class ServeCommon {
    * @param fluxString
    * @return
    */
-  public static Flux<String> updateFortuneDBWithFluxString(
-    String sessionid,Map<String,String> fluxMap
-  ) {
-    updateFortuneDBWithStringR2DBC(sessionid, fluxMap);
-      return Flux.just("");
-    }
+  // public static Flux<String> updateFortuneDBWithFluxString(
+  //   String sessionid,Map<String,String> fluxMap
+  // ) {
+  //   updateFortuneDBWithStringR2DBC(sessionid, fluxMap);
+  //     return Flux.just("");
+  //   }
 
   /**
    * Update the database with a Flux of k/v pairs

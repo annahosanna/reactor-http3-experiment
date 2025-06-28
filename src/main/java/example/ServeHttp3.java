@@ -95,9 +95,9 @@ public class ServeHttp3 {
     // Validate the data.
     // Call the routines to add to DB
     Mono<String> returnContent = contentDataMono
-      .flatMap(cdm -> cdm.checkAuthentication("Token"))
-      .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.validateMethod())
+      .flatMap(cdm -> cdm.checkAuthentication())
+      .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> {
         return cdm.processData();
       });

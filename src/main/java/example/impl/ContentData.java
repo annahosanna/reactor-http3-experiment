@@ -7,7 +7,6 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
 import java.util.HashMap;
 import java.util.List;
@@ -97,7 +96,7 @@ public class ContentData {
       .subscribeOn(Schedulers.boundedElastic());
   }
 
-  public Mono<ContentData> checkAuthentication(String token) {
+  public Mono<ContentData> checkAuthentication() {
     // Check the method - if its GET then return as normal.
     // If its PUT or POST check the value of the token
     // If its wrong return Mono.empty()
@@ -105,28 +104,28 @@ public class ContentData {
     // Set status 401
     // Set failure message
 
-    // String expectedToken = "Bearer secret-token";
+    String expectedToken = "Bearer secret-token";
     // -------------
-    if (
-      (this.headers.get(HttpHeaderNames.AUTHORIZATION) != null) &&
-      (token.equals(this.headers.get(HttpHeaderNames.AUTHORIZATION)))
-    ) {
+    boolean authenitcated =
+      ((this.headers.get(HttpHeaderNames.AUTHORIZATION) != null) &&
+        (expectedToken.equals(
+            this.headers.get(HttpHeaderNames.AUTHORIZATION)
+          )));
+    if ((this.validatedMethod == "GETHTML") || (authenitcated == true)) {
       // Yay authenticated
-    } else {
-      // Not authenticated
-      this.responseStatusCode = 401;
-      this.responseContentType = "text/html";
-      this.responseMessage = "<html>Access Denied</html>";
-      return Mono.empty();
+      return Mono.just(this);
     }
-
-    return Mono.just(this);
+    this.responseStatusCode = 401;
+    this.responseContentType = "text/html";
+    this.responseMessage = "<html>Access Denied</html>";
+    return Mono.empty();
   }
 
   public Mono<ContentData> checkSESSIONID() {
     // Check that session id is set if this is PUT or POST
     // Set status 422 and return Mono.empty()
     // otherwise return normally.
+    String sessionid = null;
     for (Map.Entry<
       CharSequence,
       List<Cookie>
@@ -135,17 +134,21 @@ public class ContentData {
       for (Cookie cookie : cookieList) {
         if (cookie.name() == "SESSIONID") {
           if (!cookie.value().isBlank()) {
-            this.sessionid = cookie.value();
+            sessionid = cookie.value();
           }
         }
       }
     }
-    if (this.sessionid == null) {
+    if ((sessionid == null) && (this.validatedMethod == "GETHTML")) {
+      this.responseCookie = ServeCommon.generateSessionId();
+      sessionid = this.responseCookie.value();
+    } else if (sessionid == null) {
       this.responseStatusCode = 422;
       this.responseContentType = "text/html";
       this.responseMessage = "<html>SESSIONID is missing</html>";
       return Mono.empty();
     }
+    this.sessionid = sessionid;
     return Mono.just(this);
   }
 
@@ -238,10 +241,9 @@ public class ContentData {
     // JSON -> Flux<Map<String, String>>
     Flux<Map<String, String>> fluxString3 =
       ServeCommon.doConvertJSONArrayToValues(convertMonoMapString);
-    Mono<String> aFluxString = fluxString3.flatMap(fm -> {
-      ServeCommon.updateFortuneDBWithFluxString(this.sessionid, fm);
-      Map<String, String> map = new HashMap<String, String>();
-      return Flux.just(map);
+    Flux<String> aFluxString = fluxString3.flatMap(fm -> {
+      FortuneDatabaseR2DBC.addFortuneData(this.sessionid, fm);
+      return Flux.just("");
     });
 
     Mono<String> waiter = aFluxString.last("");
@@ -298,7 +300,16 @@ public class ContentData {
     // otherwise return normally.
     // This return type should be the string (html)
     // sent to the client
-    return Mono.just("");
+    if (this.validatedMethod == "POST") {
+      return this.processPostData();
+    } else if (this.validatedMethod == "PUT") {
+      return this.processPutData();
+    } else if (this.validatedMethod == "GETHTML") {
+      return this.processGetHtmlData();
+    } else if (this.validatedMethod == "GETJSON") {
+      return this.processGetJSONData();
+    }
+    return Mono.empty();
   }
 
   // This way a modification to one method does not need to be duplicated
@@ -358,12 +369,12 @@ public class ContentData {
     return Flux.fromIterable(this.jsonArrayMap);
   }
 
-  // public ContentData setHeaders(Map<String, String> headers) {
-  //   if (this.hasSetHeaders.flipToTrue()) {
-  //     this.headers = headers;
-  //   }
-  //   return this;
-  // }
+  public ContentData setHeaders(HttpHeaders headers) {
+    if (this.hasSetHeaders.flipToTrue()) {
+      this.headers = headers;
+    }
+    return this;
+  }
 
   public HttpHeaders getHeaders() {
     return this.headers;
@@ -398,6 +409,28 @@ public class ContentData {
   public ContentData setResponseContentType(String contentType) {
     if (this.hasSetResponseContentType.flipToTrue()) {
       this.responseContentType = contentType;
+    }
+    return this;
+  }
+
+  public Cookie getResponseCookie() {
+    return this.responseCookie;
+  }
+
+  public ContentData setResponseCookie(Cookie responseCookie) {
+    if (this.hasSetResponseCookie.flipToTrue()) {
+      this.responseCookie = responseCookie;
+    }
+    return this;
+  }
+
+  public String getValidatedMethod() {
+    return this.validatedMethod;
+  }
+
+  public ContentData setValidatedMethod(String validatedMethod) {
+    if (this.hasSetValidatedMethod.flipToTrue()) {
+      this.validatedMethod = validatedMethod;
     }
     return this;
   }
