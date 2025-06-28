@@ -221,7 +221,7 @@ public class ContentData {
     return Mono.just(this);
   }
 
-  public Mono<String> processPostData() {
+  public Mono<ContentData> processPostData() {
     // --------------------- POST ---------------------
     // How about post be for adding fortunes
     // Requires SESSIONID
@@ -248,10 +248,10 @@ public class ContentData {
 
     Mono<String> waiter = aFluxString.last("");
 
-    return Mono.just("");
+    return Mono.just(this);
   }
 
-  public Mono<String> processPutData() {
+  public Mono<ContentData> processPutData() {
     // ---------------------PUT --------------------
     // For adding metadata
     // Requires SESSIONID
@@ -263,16 +263,16 @@ public class ContentData {
       this.sessionid,
       fluxPutString
     );
-    return Mono.just("");
+    return Mono.just(this);
   }
 
-  public Mono<String> processGetHtmlData() {
+  public Mono<ContentData> processGetHtmlData() {
     // ----------------- GET text/html  --------------------
     this.responseMessage = ServeCommon.htmlResponse();
-    return Mono.just("");
+    return Mono.just(this);
   }
 
-  public Mono<String> processGetJSONData() {
+  public Mono<ContentData> processGetJSONData() {
     // ----------- GET application/json ----------
     // SESSIONID required
     // Return fortune
@@ -283,13 +283,15 @@ public class ContentData {
       .subscribeOn(Schedulers.boundedElastic());
 
     Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-      return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
+      String response = "[{\"fortune\":\"" + fortune + "\"}]";
+      this.responseMessage = response;
+      return (Mono.just(response));
     });
 
-    return createResponseText;
+    return Mono.just(this);
   }
 
-  public Mono<String> processData() {
+  public Mono<ContentData> processData() {
     // Check that POST + Content_Type X_WWW_FORM_URLENCODED
     // Or PUT with content type APPLICATION_JSON
     // else set status code 415
@@ -391,11 +393,11 @@ public class ContentData {
     return this.responseMessage;
   }
 
-  public int getStatusCode() {
+  public int getResponseStatusCode() {
     return this.responseStatusCode;
   }
 
-  public ContentData setStatusCode(int statusCode) {
+  public ContentData setResponseStatusCode(int statusCode) {
     if (this.hasSetResponseStatusCode.flipToTrue()) {
       this.responseStatusCode = statusCode;
     }
