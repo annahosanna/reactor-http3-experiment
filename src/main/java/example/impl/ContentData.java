@@ -19,6 +19,8 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.server.HttpServerRequest;
 
+// Little issue here - what if someone connects on port 443/tcp and then on 443/udp - do they share the same session cookie
+
 // This object will not work if multiple clients were combined:
 // List<Map<String,Map<String,String>>>
 // Or just one:
@@ -106,11 +108,9 @@ public class ContentData {
 
     String expectedToken = "Bearer secret-token";
     // -------------
-    boolean authenitcated =
-      ((this.headers.get(HttpHeaderNames.AUTHORIZATION) != null) &&
-        (expectedToken.equals(
-            this.headers.get(HttpHeaderNames.AUTHORIZATION)
-          )));
+    boolean authenitcated = ((this.headers.get(HttpHeaderNames.AUTHORIZATION) !=
+        null) &&
+      (expectedToken.equals(this.headers.get(HttpHeaderNames.AUTHORIZATION))));
     if ((this.validatedMethod == "GETHTML") || (authenitcated == true)) {
       // Yay authenticated
       return Mono.just(this);
@@ -155,8 +155,9 @@ public class ContentData {
   public Mono<ContentData> validateMethod() {
     // Probably easier with enum and switches
     String contentType = null;
-    String contentTypeTemp =
-      this.headers.get(HttpHeaderNames.CONTENT_TYPE).toLowerCase();
+    String contentTypeTemp = this.headers.get(
+      HttpHeaderNames.CONTENT_TYPE
+    ).toLowerCase();
     if (
       contentTypeTemp.startsWith(
         HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
@@ -165,8 +166,7 @@ public class ContentData {
       contentType = "JSON";
     } else if (
       contentTypeTemp.startsWith(
-        HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-          .toLowerCase()
+        HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString().toLowerCase()
       )
     ) {
       contentType = "URLENCODED";
@@ -279,8 +279,9 @@ public class ContentData {
     this.responseContentType = "application/json";
     this.responseStatusCode = 200;
     //This returns untrusted content; however, the JS client will display it rather than being pushed by us.
-    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
-      .subscribeOn(Schedulers.boundedElastic());
+    Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune().subscribeOn(
+      Schedulers.boundedElastic()
+    );
 
     Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
       String response = "[{\"fortune\":\"" + fortune + "\"}]";
