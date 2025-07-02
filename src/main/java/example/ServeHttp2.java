@@ -3,6 +3,8 @@ package example;
 import example.FortuneDatabase;
 import example.ServeCommon;
 import example.impl.BooleanObject;
+import example.impl.ContentData;
+import example.impl.WrappedString;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -14,8 +16,6 @@ import java.util.HashMap;
 import java.util.Map;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.ParallelFlux;
 import reactor.core.scheduler.Schedulers;
@@ -35,107 +35,98 @@ public class ServeHttp2 {
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    ContentData contentData = new ContentData(request);
+    Mono<ContentData> contentDataMono = Mono.just(contentData);
+    WrappedString returnMessage = new WrappedString();
+    Disposable returnContent = contentDataMono
+      .flatMap(cdm -> cdm.validateMethod())
+      .flatMap(cdm -> cdm.checkAuthentication())
+      .flatMap(cdm -> cdm.checkSESSIONID())
+      .flatMap(cdm -> cdm.processData())
+      .subscribe(cdm -> {
+        // Set each response field
+        response.status(cdm.getResponseStatusCode());
+        if (cdm.getResponseContentType() != null) {
+          response.header("content-type", cdm.getResponseContentType());
+        }
+        if (cdm.getResponseCookie() != null) {
+          response.addCookie(cdm.getResponseCookie());
+        }
+        returnMessage.setWrappedString(cdm.getResponseMessage());
+      });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Post HTTP/2");
-    // response.addCookie(ServeCommon.generateSessionId());
-    Mono<String> monoString = Flux.from(
-      ServeCommon.getFormData(request, response)
-    )
-      .next()
-      .flatMap(data -> Mono.just(""));
+    System.out.println("Put HTTP/2");
 
-    // The session cookie should have been sent by the client automatically
-    Cookie sessionCookie = request.cookies().get("SESSIONID") != null
-      ? request.cookies().get("SESSIONID").stream().findFirst().orElse(null)
-      : null;
-    // if (sessionCookie != null) {
-    //   System.out.println("Session ID: " + sessionCookie.value());
-    // }
-    // Need to find another way to get hostname
-    response.header(
-      "location",
-      "https://" + request.hostName().toString() + "/fortune"
-    );
-    response.status(302);
     response.header(
       "alt-svc",
       "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
-    return response.sendString(monoString);
+    return response.sendString(Mono.just(returnMessage.getWrappedString()));
   }
 
   public static NettyOutbound processGetV2(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    ContentData contentData = new ContentData(request);
+    Mono<ContentData> contentDataMono = Mono.just(contentData);
+    WrappedString returnMessage = new WrappedString();
+    Disposable returnContent = contentDataMono
+      .flatMap(cdm -> cdm.validateMethod())
+      .flatMap(cdm -> cdm.checkAuthentication())
+      .flatMap(cdm -> cdm.checkSESSIONID())
+      .flatMap(cdm -> cdm.processData())
+      .subscribe(cdm -> {
+        // Set each response field
+        response.status(cdm.getResponseStatusCode());
+        if (cdm.getResponseContentType() != null) {
+          response.header("content-type", cdm.getResponseContentType());
+        }
+        if (cdm.getResponseCookie() != null) {
+          response.addCookie(cdm.getResponseCookie());
+        }
+        returnMessage.setWrappedString(cdm.getResponseMessage());
+      });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Get HTTP/2");
-    response.addCookie(ServeCommon.generateSessionId());
-    Mono<String> responseContent = ServeCommon.responseTextR2DBC(
-      request,
-      response
+    System.out.println("Put HTTP/2");
+
+    response.header(
+      "alt-svc",
+      "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
-    return response.sendString(responseContent);
+    return response.sendString(Mono.just(returnMessage.getWrappedString()));
   }
 
   public static NettyOutbound processPutV2(
     HttpServerRequest request,
     HttpServerResponse response
   ) {
+    ContentData contentData = new ContentData(request);
+    Mono<ContentData> contentDataMono = Mono.just(contentData);
+    WrappedString returnMessage = new WrappedString();
+    Disposable returnContent = contentDataMono
+      .flatMap(cdm -> cdm.validateMethod())
+      .flatMap(cdm -> cdm.checkAuthentication())
+      .flatMap(cdm -> cdm.checkSESSIONID())
+      .flatMap(cdm -> cdm.processData())
+      .subscribe(cdm -> {
+        // Set each response field
+        response.status(cdm.getResponseStatusCode());
+        if (cdm.getResponseContentType() != null) {
+          response.header("content-type", cdm.getResponseContentType());
+        }
+        if (cdm.getResponseCookie() != null) {
+          response.addCookie(cdm.getResponseCookie());
+        }
+        returnMessage.setWrappedString(cdm.getResponseMessage());
+      });
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println("Put HTTP/2");
-    BooleanObject authenticatedResult = new BooleanObject();
-    Mono.just(request)
-      .flatMap(aRequest ->
-        ServeCommon.checkAuthenticationHeader(aRequest, authenticatedResult)
-      )
-      .then()
-      .subscribe();
-    if (authenticatedResult.getValue() == false) {
-      response.status(401);
-      response.header("content-type", "text/html");
-      return response.sendString(Mono.just("<html>Access Denied</html>"));
-    }
-    // 422 Unprocessable Content if SESSIONID is missing
-    BooleanObject sessionidResult = new BooleanObject();
-    Mono.just(request)
-      .flatMap(aRequest ->
-        ServeCommon.checkSESSIONIDCookie(aRequest, sessionidResult)
-      )
-      .then()
-      .subscribe();
-    if (sessionidResult.getValue() == false) {
-      response.status(422);
-      response.header("content-type", "text/html");
-      return response.sendString(
-        Mono.just("<html>SESSIONID is missing</html>")
-      );
-    }
 
-    if (
-      request.requestHeaders().get(HttpHeaderNames.CONTENT_TYPE) != null &&
-      request
-        .requestHeaders()
-        .get(HttpHeaderNames.CONTENT_TYPE)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
-    ) {} else {
-      response.status(415);
-      return response.sendString(Mono.just(""));
-    }
-
-    Mono<String> monoString = Flux.from(
-      ServeCommon.processPutData(request, response)
-    )
-      .last()
-      .flatMap(data -> Mono.just(""));
-
-    response.status(204);
-    response.header("content-type", "application/json");
     response.header(
       "alt-svc",
       "h3=\":443\"; ma=2592000; persist=1, h2=\":443\"; ma=1"
     );
-    return response.sendString(monoString);
+    return response.sendString(Mono.just(returnMessage.getWrappedString()));
   }
 }

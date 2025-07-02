@@ -54,7 +54,9 @@ public class ContentData {
   private int responseStatusCode = 401;
   private String responseMessage = null;
   private String responseContentType = null;
+  // Cookie are by path not port
   private Cookie responseCookie = null;
+  private String responseAuthorizationHeader = null;
   private Map<CharSequence, List<Cookie>> cookieMapList = null;
   // Make sure the value is assigned once, and cannot be changed
   // An attempt to change it just returns the current value
@@ -69,6 +71,7 @@ public class ContentData {
   private BooleanObject hasSetResponseContentType = new BooleanObject();
   private BooleanObject hasSetResponseCookie = new BooleanObject();
   private BooleanObject hasSetValidatedMethod = new BooleanObject();
+  private BooleanObject hasSetResponseAuthorizationHeader = new BooleanObject();
 
   public ContentData(HttpServerRequest request) {
     // extract each variable from request.
@@ -96,6 +99,7 @@ public class ContentData {
         }
       })
       .subscribeOn(Schedulers.boundedElastic());
+    this.setResponseAuthorizationHeader("Bearer secrettoken")
   }
 
   public Mono<ContentData> checkAuthentication() {
@@ -106,11 +110,10 @@ public class ContentData {
     // Set status 401
     // Set failure message
 
-    String expectedToken = "Bearer secret-token";
     // -------------
     boolean authenitcated = ((this.headers.get(HttpHeaderNames.AUTHORIZATION) !=
         null) &&
-      (expectedToken.equals(this.headers.get(HttpHeaderNames.AUTHORIZATION))));
+      (this.getResponseAuthorizationHeader().equals(this.headers.get(HttpHeaderNames.AUTHORIZATION))));
     if ((this.validatedMethod == "GETHTML") || (authenitcated == true)) {
       // Yay authenticated
       return Mono.just(this);
@@ -436,5 +439,17 @@ public class ContentData {
       this.validatedMethod = validatedMethod;
     }
     return this;
+  }
+
+  public String getResponseAuthorizationHeader() {
+    return this.responseAuthorizationHeader;
+  }
+
+  public void setResponseAuthorizationHeader(
+    String responseAuthorizationHeader
+  ) {
+    if (this.hasSetResponseAuthorizationHeader.flipToTrue()) {
+      this.responseAuthorizationHeader = responseAuthorizationHeader;
+    }
   }
 }
