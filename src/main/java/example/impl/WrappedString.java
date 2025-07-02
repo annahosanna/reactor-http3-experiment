@@ -7,7 +7,11 @@ public class WrappedString {
   public WrappedString() {}
 
   public String getWrappedString() {
-    return wrappedString;
+    if (this.wrappedString == null) {
+      return "";
+    } else {
+      return wrappedString;
+    }
   }
 
   public void setWrappedString(String wrappedString) {

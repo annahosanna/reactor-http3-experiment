@@ -55,7 +55,7 @@ public class ServeHttp2 {
         returnMessage.setWrappedString(cdm.getResponseMessage());
       });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Put HTTP/2");
+    System.out.println(request.method().name() + " HTTP/2");
 
     response.header(
       "alt-svc",
@@ -88,7 +88,7 @@ public class ServeHttp2 {
         returnMessage.setWrappedString(cdm.getResponseMessage());
       });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Put HTTP/2");
+    System.out.println(request.method().name() + " HTTP/2");
 
     response.header(
       "alt-svc",
@@ -121,7 +121,7 @@ public class ServeHttp2 {
         returnMessage.setWrappedString(cdm.getResponseMessage());
       });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Put HTTP/2");
+    System.out.println(request.method().name() + " HTTP/2");
 
     response.header(
       "alt-svc",

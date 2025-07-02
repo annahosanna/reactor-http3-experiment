@@ -62,7 +62,7 @@ public class ServeHttp11 {
         returnMessage.setWrappedString(cdm.getResponseMessage());
       });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Put HTTP/1.1");
+    System.out.println(request.method().name() + " HTTP/1.1");
 
     response.header(
       "alt-svc",
@@ -89,19 +89,20 @@ public class ServeHttp11 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .subscribe(cdm -> {
-        // Set each response field
-        response.status(cdm.getResponseStatusCode());
-        if (cdm.getResponseContentType() != null) {
-          response.header("content-type", cdm.getResponseContentType());
-        }
-        if (cdm.getResponseCookie() != null) {
-          response.addCookie(cdm.getResponseCookie());
-        }
-        returnMessage.setWrappedString(cdm.getResponseMessage());
-      });
+      .subscribe();
+    // .subscribe(cdm -> {
+    //   // Set each response field
+    //   response.status(cdm.getResponseStatusCode());
+    //   if (cdm.getResponseContentType() != null) {
+    //     response.header("content-type", cdm.getResponseContentType());
+    //   }
+    //   if (cdm.getResponseCookie() != null) {
+    //     response.addCookie(cdm.getResponseCookie());
+    //   }
+    //   returnMessage.setWrappedString(cdm.getResponseMessage());
+    // });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Put HTTP/1.1");
+    System.out.println(request.method().name() + " HTTP/1.1");
 
     response.header(
       "alt-svc",
@@ -136,7 +137,7 @@ public class ServeHttp11 {
         returnMessage.setWrappedString(cdm.getResponseMessage());
       });
     System.out.println("Client connected to " + request.hostName().toString());
-    System.out.println("Put HTTP/1.1");
+    System.out.println(request.method().name() + " HTTP/1.1");
 
     response.header(
       "alt-svc",
