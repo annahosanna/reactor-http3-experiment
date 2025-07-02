@@ -20,8 +20,8 @@ dependencies {
   implementation group: 'io.projectreactor.netty', name: 'reactor-netty-http', version: '1.2.4'
   implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.18.3'
   implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.18.3'
-  implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.5.0'
-  implementation group: 'org.apache.commons', name: 'commons-parent', version: '81'
+  // implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.5.0'
+  // implementation group: 'org.apache.commons', name: 'commons-parent', version: '81'
   // JS Testing
   testImplementation 'org.codehaus.groovy:groovy-all:3.0.24'
   testImplementation "org.spockframework:spock-core:2.4-M6-groovy-3.0"

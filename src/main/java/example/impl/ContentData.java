@@ -99,7 +99,7 @@ public class ContentData {
         }
       })
       .subscribeOn(Schedulers.boundedElastic());
-    this.setResponseAuthorizationHeader("Bearer secrettoken")
+    this.setResponseAuthorizationHeader("Bearer secrettoken");
   }
 
   public Mono<ContentData> checkAuthentication() {
@@ -113,7 +113,9 @@ public class ContentData {
     // -------------
     boolean authenitcated = ((this.headers.get(HttpHeaderNames.AUTHORIZATION) !=
         null) &&
-      (this.getResponseAuthorizationHeader().equals(this.headers.get(HttpHeaderNames.AUTHORIZATION))));
+      (this.getResponseAuthorizationHeader().equals(
+          this.headers.get(HttpHeaderNames.AUTHORIZATION)
+        )));
     if ((this.validatedMethod == "GETHTML") || (authenitcated == true)) {
       // Yay authenticated
       return Mono.just(this);
@@ -158,9 +160,14 @@ public class ContentData {
   public Mono<ContentData> validateMethod() {
     // Probably easier with enum and switches
     String contentType = null;
-    String contentTypeTemp = this.headers.get(
-      HttpHeaderNames.CONTENT_TYPE
-    ).toLowerCase();
+    String contentTypeTemp = null;
+    if (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) {
+      contentTypeTemp = this.headers.get(
+        HttpHeaderNames.CONTENT_TYPE
+      ).toLowerCase();
+    } else {
+      contentTypeTemp = "";
+    }
     if (
       contentTypeTemp.startsWith(
         HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()

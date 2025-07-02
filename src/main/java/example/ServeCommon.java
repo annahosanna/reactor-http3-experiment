@@ -241,7 +241,13 @@ public class ServeCommon {
     // Not right - this needs to be a flux not mono
     Mono<String> monoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringHttpData
-    ).flatMap(a -> ServeCommon.doFilter(a, request));
+    ).flatMap(a -> {
+        if ((a == null) || (a.length() < 1)) {
+          return Mono.empty();
+        } else {
+          return Mono.just(a);
+        }
+      });
     return monoMapString;
   }
 
@@ -272,7 +278,7 @@ public class ServeCommon {
   }
 
   public static String contentTypeTest(
-    ContentTypeObject contentTypeObject,
+    //    ContentTypeObject contentTypeObject,
     HttpServerRequest request
   ) {
     String contentType = (request
@@ -287,11 +293,11 @@ public class ServeCommon {
   }
 
   public static void getContentType(
-    ContentTypeObject contentTypeObject,
+    // ContentTypeObject contentTypeObject,
     HttpServerRequest request
   ) {
     String contentType = contentTypeTest(
-      contentTypeObject,
+      // contentTypeObject,
       request
     ).toLowerCase();
     if (
@@ -299,19 +305,19 @@ public class ServeCommon {
         HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
       )
     ) {
-      contentTypeObject.setIsHtml();
+      // contentTypeObject.setIsHtml();
     } else if (
       contentType.startsWith(
         HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
       )
     ) {
-      contentTypeObject.setIsJson();
+      // contentTypeObject.setIsJson();
     } else if (
       contentType.startsWith(
         HttpHeaderValues.TEXT_PLAIN.toString().toLowerCase()
       )
     ) {
-      contentTypeObject.setIsText();
+      // contentTypeObject.setIsText();
     }
   }
 
@@ -337,48 +343,50 @@ public class ServeCommon {
     );
     response.header("cache-control", "no-cache");
     // Resolve content type before async stuff
-    ContentTypeObject contentTypeObject = new ContentTypeObject();
-    getContentType(contentTypeObject, request);
-    // Start async stuff
+    // ContentTypeObject contentTypeObject = new ContentTypeObject();
+    // getContentType(contentTypeObject, request);
+    // // Start async stuff
 
-    // This could be a mono if I knew how to modify response and return a string
-    if (contentTypeObject.getIsHtml()) {
-      response.header("content-type", "text/html");
-      response.status(200);
-      // Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-      //   return (Mono.just(htmlResponse()));
-      // });
-      return Mono.just(htmlResponse();
-    } else if (contentTypeObject.getIsText()) {
-      response.header("content-type", "text/plain");
-      response.status(200);
+    // // This could be a mono if I knew how to modify response and return a string
+    // if (contentTypeObject.getIsHtml()) {
+    //   response.header("content-type", "text/html");
+    //   response.status(200);
+    //   // Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+    //   //   return (Mono.just(htmlResponse()));
+    //   // });
+    //   return Mono.just(htmlResponse());
+    // } else if (contentTypeObject.getIsText()) {
+    //   response.header("content-type", "text/plain");
+    //   response.status(200);
 
-      // return getFortuneMono;
-      return Mono.just(
-        "Obtaining untrusted content is currently not supported"
-      );
-    } else if (contentTypeObject.getIsJson()) {
-      response.header("content-type", "application/json");
-      response.status(200);
-      //This returns untrusted content; however, the JS client will display it rather than being pushed by us.
-      Mono<String> getFortuneMono = FortuneDatabaseR2DBC.getFortune()
-        .subscribeOn(Schedulers.boundedElastic());
+    //   // return getFortuneMono;
+    //   return Mono.just(
+    //     "Obtaining untrusted content is currently not supported"
+    //   );
+    // } else if (contentTypeObject.getIsJson()) {
+    //   response.header("content-type", "application/json");
+    //   response.status(200);
+    //   //This returns untrusted content; however, the JS client will display it rather than being pushed by us.
+    //   Mono<String> getFortuneMono =
+    //     FortuneDatabaseR2DBC.getFortune().subscribeOn(
+    //       Schedulers.boundedElastic()
+    //     );
 
-      Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
-        return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
-      });
+    //   Mono<String> createResponseText = getFortuneMono.flatMap(fortune -> {
+    //     return (Mono.just("[{\"fortune\":\"" + fortune + "\"}]"));
+    //   });
 
-      return createResponseText;
-      // return Mono.just("[{\"fortune\":\"Untrusted content\"}]");
-    } else {
-      response.header("content-type", "text/html");
-      response.status(415);
-      return (
-        Mono.just(
-          "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body>There was a problem processing your request: Unsupported media type</body></html>"
-        )
-      );
-    }
+    //   return createResponseText;
+    //   // return Mono.just("[{\"fortune\":\"Untrusted content\"}]");
+    // } else {
+    response.header("content-type", "text/html");
+    response.status(415);
+    return (
+      Mono.just(
+        "<!DOCTYPE html><html><head><link rel=\"icon\" href=\"data:,\"/></head><body>There was a problem processing your request: Unsupported media type</body></html>"
+      )
+    );
+    // }
   }
 
   /**
@@ -416,10 +424,11 @@ public class ServeCommon {
    * @return
    */
   public static void updateFortuneDBWithStringR2DBC(
-    String sessionid, Map<String, String> value
+    String sessionid,
+    Map<String, String> value
   ) {
     if (!Objects.isNull(value)) {
-      FortuneDatabaseR2DBC.addFortuneData(sessionid,value);
+      FortuneDatabaseR2DBC.addFortuneData(sessionid, value);
     } else {
       // System.out.println("No value");
     }
@@ -432,10 +441,11 @@ public class ServeCommon {
    * @return
    */
   public static void updateDataDBWithStringR2DBC(
-    String sessionid, Map<String, String> value
+    String sessionid,
+    Map<String, String> value
   ) {
     if (!Objects.isNull(value)) {
-      FortuneDatabaseR2DBC.addDataData(sessionid,value);
+      FortuneDatabaseR2DBC.addDataData(sessionid, value);
     } else {
       // System.out.println("No value");
     }
@@ -447,17 +457,17 @@ public class ServeCommon {
    * @param value
    * @return
    */
-  public static Flux<Map<String, String>> updateDBWithStringR2DBC(
-    Map<String, String> value,
-    HttpServerRequest request
-  ) {
-    if (!Objects.isNull(value)) {
-      FortuneDatabaseR2DBC.addFortune(value, request);
-    } else {
-      // System.out.println("No value");
-    }
-    return Flux.empty();
-  }
+  // public static Flux<Map<String, String>> updateDBWithStringR2DBC(
+  //   Map<String, String> value,
+  //   HttpServerRequest request
+  // ) {
+  //   if (!Objects.isNull(value)) {
+  //     FortuneDatabaseR2DBC.addFortune(value, request);
+  //   } else {
+  //     // System.out.println("No value");
+  //   }
+  //   return Flux.empty();
+  // }
 
   /**
    * Convert a JSON string in the form if List<Map<String,String>>
@@ -470,8 +480,10 @@ public class ServeCommon {
     String value = new String();
     if (result.length() > 8) {
       try {
-        List<Map<String, String>> pojo = new ObjectMapper()
-          .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+        List<Map<String, String>> pojo = new ObjectMapper().readValue(
+          result,
+          new TypeReference<List<Map<String, String>>>() {}
+        );
         System.out.println("JSON value: " + result);
         // Just read one object
         Map<String, String> map = pojo.iterator().next();
@@ -490,13 +502,13 @@ public class ServeCommon {
    * @param result
    * @return
    */
-  public static Mono<String> doFilter(
-    String result,
-    HttpServerRequest request
-  ) {
-    Flux<String> valueOnly = doConvertJSONArrayToValues(result);
-    return updateDBWithFluxString(valueOnly, request);
-  }
+  // public static Mono<String> doFilter(
+  //   String result,
+  //   HttpServerRequest request
+  // ) {
+  //   Flux<String> valueOnly = doConvertJSONArrayToValues(result);
+  //   return updateDBWithFluxString(valueOnly, request);
+  // }
 
   public static Mono<String> getFormData(
     HttpServerRequest request,
@@ -509,8 +521,7 @@ public class ServeCommon {
         .get(HttpHeaderNames.CONTENT_TYPE)
         .toLowerCase()
         .startsWith(
-          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
-            .toLowerCase()
+          HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString().toLowerCase()
         )
     ) {
       request
@@ -537,8 +548,11 @@ public class ServeCommon {
     Mono<String> convertMonoMapString = convertMonoMapToMonoStringGeneric(
       monoMapStringString
     );
-    Flux<String> fluxString2 = doConvertJSONArrayToValues(convertMonoMapString);
-    return updateDBWithFluxString(fluxString2, request);
+    Flux<Map<String, String>> fluxString2 = doConvertJSONArrayToValues(
+      convertMonoMapString
+    );
+    // return updateDBWithFluxString(fluxString2, request);
+    return Mono.just("test");
   }
 
   public static String getFormParamName(String param) {
@@ -644,7 +658,9 @@ public class ServeCommon {
    * @param value  the Mono<String> with raw text
    * @return       the extracted values
    */
-  public static Flux<Map<String, String>> doConvertJSONArrayToValues(Mono<String> value) {
+  public static Flux<Map<String, String>> doConvertJSONArrayToValues(
+    Mono<String> value
+  ) {
     System.out.println(
       "doConvertJSONArrayToValues - Mono<String> -> Flux<String>"
     );
@@ -660,7 +676,9 @@ public class ServeCommon {
    * @param result  a raw text string
    * @return        the extracted values
    */
-  public static Flux<Map<String,String>> doConvertJSONArrayToValues(String result) {
+  public static Flux<Map<String, String>> doConvertJSONArrayToValues(
+    String result
+  ) {
     System.out.println("doConvertJSONArrayToValues - String -> Flux<String>");
 
     System.out.println(result);
@@ -672,8 +690,10 @@ public class ServeCommon {
         // Then convert the List of Maps to only map values
         // [{ "Key": "K1", "Value": "V1" },{ "Key": "K2", "Value": "V2" }]
         // Interate over the List and check the Key name, and then the Value
-        List<Map<String, String>> returnValue = new ObjectMapper()
-          .readValue(result, new TypeReference<List<Map<String, String>>>() {});
+        List<Map<String, String>> returnValue = new ObjectMapper().readValue(
+          result,
+          new TypeReference<List<Map<String, String>>>() {}
+        );
 
         return Flux.fromIterable(returnValue);
       } catch (Exception e) {
@@ -688,6 +708,7 @@ public class ServeCommon {
       return Flux.empty();
     }
   }
+
   /**
    * This method consumes the output of the response,
    * and validates that that the String conforms to the JSON form List<Map<String,String>>
@@ -703,9 +724,12 @@ public class ServeCommon {
     // Get raw data
     Mono<String> rawMonoString = getMonoString(request, response);
     // Confirm that it is List<Map<String,String>>
-    Flux<String> fluxString = doConvertJSONArrayToValues(rawMonoString);
+    Flux<Map<String, String>> fluxString = doConvertJSONArrayToValues(
+      rawMonoString
+    );
     // Update the database
-    return updateDBWithFluxString(fluxString, request);
+    // return updateDBWithFluxString(fluxString, request);
+    return Mono.just("test");
   }
 
   /**
@@ -731,7 +755,8 @@ public class ServeCommon {
    * @return
    */
   public static Mono<String> updateFortuneDBWithFluxString(
-    String sessionid,Flux<Map<String,String>> fluxMap
+    String sessionid,
+    Flux<Map<String, String>> fluxMap
   ) {
     Flux<String> dbFlux = fluxMap.flatMap(fm -> {
       updateFortuneDBWithStringR2DBC(sessionid, fm);
@@ -759,7 +784,8 @@ public class ServeCommon {
    * @return
    */
   public static Mono<String> updateDataDBWithFluxString(
-    String sessionid,Flux<Map<String,String>> fluxMap
+    String sessionid,
+    Flux<Map<String, String>> fluxMap
   ) {
     Flux<String> dbFlux = fluxMap.flatMap(fm -> {
       updateDataDBWithStringR2DBC(sessionid, fm);
@@ -774,11 +800,12 @@ public class ServeCommon {
    * @param fluxString
    * @return
    */
-  public static Mono<String> updateDBWithFluxKeyPair(
-    String sessionid, Flux<Map<String, String>> fluxKeyPair
+  public static Mono<String> updateFortuneDBWithFluxKeyPair(
+    String sessionid,
+    Flux<Map<String, String>> fluxKeyPair
   ) {
     Flux<String> dbFlux = fluxKeyPair.flatMap(s -> {
-      updateDBWithStringR2DBC(sessionid, s);
+      updateFortuneDBWithStringR2DBC(sessionid, s);
       return Flux.just("");
     });
     Mono<String> waiter = dbFlux.last("");
@@ -799,8 +826,7 @@ public class ServeCommon {
    * @return         the web page from the resulting concatination
    */
   public static String htmlResponseD3() {
-    String finalHtml =
-      """
+    String finalHtml = """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -1029,8 +1055,7 @@ public class ServeCommon {
   }
   */
   public static String htmlResponse() {
-    String finalHtml =
-      """
+    String finalHtml = """
       """;
     return finalHtml;
   }
@@ -1054,8 +1079,7 @@ public class ServeCommon {
   }
 
   public static String accessDeniedResponse() {
-    String response =
-      """
+    String response = """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -1119,6 +1143,7 @@ public class ServeCommon {
 
     return cookie;
   }
+
   public static Mono<String> checkSESSIONIDCookie(
     HttpServerRequest request,
     BooleanObject success
@@ -1130,12 +1155,9 @@ public class ServeCommon {
     if (sessionCookie != null) {
       success.setValue(true);
       return Mono.just("");
-
     } else {
       success.setValue(false);
       return Mono.empty();
     }
-
   }
-
 }
