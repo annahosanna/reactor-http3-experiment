@@ -52,7 +52,6 @@ public class FortuneDatabase {
       e.printStackTrace();
       fortune = "";
     }
-
     return fortune;
   }
 
@@ -73,6 +72,21 @@ public class FortuneDatabase {
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
           stmt.setString(1, trimmedFortune);
           stmt.executeUpdate();
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      try {
+        // Hope this does not rely on scope
+        Class.forName("org.h2.Driver");
+        try (Connection conn = DriverManager.getConnection(dbUrl, "sa", "")) {
+          conn
+            .createStatement()
+            .execute(
+              "CREATE TABLE IF NOT EXISTS DATA (ID IDENTITY, SESSIONID VARCHAR(255), KEY VARCHAR(255),VALUE VARCHAR(255), TIME BIGINT DEFAULT DATEDIFF('MILLISECOND', TIMESTAMP '1970-01-01 00:00:00', CURRENT_TIMESTAMP AT TIME ZONE 'UTC')"
+            );
         } catch (Exception e) {
           e.printStackTrace();
         }
