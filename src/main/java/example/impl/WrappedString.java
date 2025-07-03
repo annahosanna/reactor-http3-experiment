@@ -3,12 +3,14 @@ package example.impl;
 public class WrappedString {
 
   private String wrappedString = null;
+  private BooleanObject hasSetWrappedString = new BooleanObject();
 
   public WrappedString() {}
 
   public String getWrappedString() {
     if (this.wrappedString == null) {
-      return "No string retrieved";
+      System.out.println("Cannot get a null valued wrapped string.");
+      return "";
     } else {
       return wrappedString;
     }
@@ -16,8 +18,11 @@ public class WrappedString {
 
   public void setWrappedString(String wrappedString) {
     if (wrappedString == null) {
-      this.wrappedString = "No string set";
-    } else {
+      System.out.println("Cannot set a wrapped string to null.");
+      return;
+    }
+    if (this.hasSetWrappedString.flipToTrue()) {
+      // Treat it like final
       this.wrappedString = wrappedString;
     }
   }
