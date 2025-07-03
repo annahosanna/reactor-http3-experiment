@@ -243,6 +243,7 @@ public class ServeCommon {
       monoMapStringHttpData
     ).flatMap(a -> {
         if ((a == null) || (a.length() < 1)) {
+          System.out.println("JSON to short");
           return Mono.empty();
         } else {
           return Mono.just(a);
@@ -494,6 +495,7 @@ public class ServeCommon {
         e.printStackTrace();
       }
     }
+    System.out.println("Invalid JSON input");
     return (Mono.empty());
   }
 
@@ -636,6 +638,7 @@ public class ServeCommon {
     }
 
     if (list.toArray().length == 0) {
+      System.out.println("No key/pair from post");
       return Flux.empty();
     } else {
       return Flux.fromIterable(list);
@@ -699,6 +702,7 @@ public class ServeCommon {
       } catch (Exception e) {
         e.printStackTrace();
         // response.status(422);
+        System.out.println("Invalid JSON input");
         return Flux.empty();
       }
     } else {
@@ -1075,6 +1079,7 @@ public class ServeCommon {
       return Mono.just("");
     }
     success.setValue(false);
+    System.out.println("Authentication failed");
     return Mono.empty();
   }
 
@@ -1157,6 +1162,7 @@ public class ServeCommon {
       return Mono.just("");
     } else {
       success.setValue(false);
+      System.out.println("SESSIONID cookie not found");
       return Mono.empty();
     }
   }

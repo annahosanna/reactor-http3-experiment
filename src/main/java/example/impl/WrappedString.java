@@ -8,13 +8,17 @@ public class WrappedString {
 
   public String getWrappedString() {
     if (this.wrappedString == null) {
-      return "";
+      return "No string retrieved";
     } else {
       return wrappedString;
     }
   }
 
   public void setWrappedString(String wrappedString) {
-    this.wrappedString = wrappedString;
+    if (wrappedString == null) {
+      this.wrappedString = "No string set";
+    } else {
+      this.wrappedString = wrappedString;
+    }
   }
 }

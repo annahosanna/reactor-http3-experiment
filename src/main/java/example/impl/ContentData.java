@@ -94,8 +94,9 @@ public class ContentData {
           System.out.println("Received data");
           return Mono.just(str);
         } else {
-          System.out.println("No data received");
-          return Mono.empty();
+          System.out.println("No input data received");
+          // Not going receive data from a get, but do not end the workflow.
+          return Mono.just("");
         }
       })
       .subscribeOn(Schedulers.boundedElastic());
@@ -123,6 +124,7 @@ public class ContentData {
     this.responseStatusCode = 401;
     this.responseContentType = "text/html";
     this.responseMessage = "<html>Access Denied</html>";
+    System.out.println("Access Denied");
     return Mono.empty();
   }
 
@@ -151,6 +153,7 @@ public class ContentData {
       this.responseStatusCode = 422;
       this.responseContentType = "text/html";
       this.responseMessage = "<html>SESSIONID is missing</html>";
+      System.out.println("SESSIONID is missing");
       return Mono.empty();
     }
     this.sessionid = sessionid;
@@ -162,70 +165,103 @@ public class ContentData {
     String contentType = null;
     String contentTypeTemp = null;
     if (this.headers.get(HttpHeaderNames.CONTENT_TYPE) != null) {
-      contentTypeTemp = this.headers.get(
-        HttpHeaderNames.CONTENT_TYPE
-      ).toLowerCase();
+      contentTypeTemp = this.headers.get(HttpHeaderNames.CONTENT_TYPE)
+        .toLowerCase()
+        .trim();
     } else {
       contentTypeTemp = "";
     }
     if (
       contentTypeTemp.startsWith(
-        HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+        HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase().trim()
       )
     ) {
+      System.out.println("ContentType JSON");
       contentType = "JSON";
     } else if (
       contentTypeTemp.startsWith(
-        HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString().toLowerCase()
+        HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()
+          .toLowerCase()
+          .trim()
       )
     ) {
+      System.out.println("ContentType URLENCODED");
       contentType = "URLENCODED";
     } else if (
       contentTypeTemp.startsWith(
-        HttpHeaderValues.TEXT_HTML.toString().toLowerCase()
+        HttpHeaderValues.TEXT_HTML.toString().toLowerCase().trim()
       )
     ) {
+      System.out.println("ContentType HTML");
       contentType = "HTML";
     } else {
+      System.out.println("ContentType NONE");
       contentType = "NONE";
     }
 
+    String acceptEncodingTemp = null;
     String acceptEncoding = null;
+    if (this.headers.get(HttpHeaderNames.ACCEPT) != null) {
+      String[] acceptArray = this.headers.get(HttpHeaderNames.ACCEPT).split(
+        ","
+      );
+      if (acceptArray.length > 0) {
+        acceptEncodingTemp = acceptArray[0].trim();
+      }
+    }
+
     if (
-      (this.headers.get(HttpHeaderNames.ACCEPT) != null) &&
-      this.headers.get(HttpHeaderNames.ACCEPT)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.TEXT_HTML.toString().toLowerCase())
+      (acceptEncodingTemp != null) &&
+      (acceptEncodingTemp
+          .toLowerCase()
+          .startsWith(HttpHeaderValues.TEXT_HTML.toString().toLowerCase()))
     ) {
+      System.out.println("AcceptEncoding HTML");
       acceptEncoding = "HTML";
     } else if (
-      (this.headers.get(HttpHeaderNames.ACCEPT) != null) &&
-      this.headers.get(HttpHeaderNames.ACCEPT)
-        .toLowerCase()
-        .startsWith(HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase())
+      (acceptEncodingTemp != null) &&
+      (acceptEncodingTemp
+          .toLowerCase()
+          .startsWith(
+            HttpHeaderValues.APPLICATION_JSON.toString().toLowerCase()
+          ))
     ) {
+      System.out.println("AcceptEncoding JSON");
       acceptEncoding = "JSON";
     } else {
+      System.out.println("AcceptEncoding NONE");
       acceptEncoding = "NONE";
     }
     if ((contentType == "JSON") && (this.method == "PUT")) {
+      System.out.println("validatedMethod = PUT");
       this.validatedMethod = "PUT";
     } else if ((contentType == "URLENCODED") && (this.method == "POST")) {
+      System.out.println("validatedMethod = POST");
       this.validatedMethod = "POST";
     } else if (
       ((contentType == "HTML") || (acceptEncoding == "HTML")) &&
       (this.method == "GET")
     ) {
+      System.out.println("validatedMethod = GETHTML");
       this.validatedMethod = "GETHTML";
     } else if (
       ((contentType == "JSON") || (acceptEncoding == "JSON")) &&
       (this.method == "GET")
     ) {
+      System.out.println("validatedMethod = GETJSON");
       this.validatedMethod = "GETJSON";
     } else {
       this.validatedMethod = "";
       this.responseStatusCode = 415;
       this.responseMessage = "";
+      System.out.println(
+        "Unsupported Media Type:" +
+        acceptEncoding +
+        " " +
+        contentTypeTemp +
+        " " +
+        this.method
+      );
       return Mono.empty();
     }
     return Mono.just(this);
@@ -322,6 +358,7 @@ public class ContentData {
     } else if (this.validatedMethod == "GETJSON") {
       return this.processGetJSONData();
     }
+    System.out.println("Unsupported Method");
     return Mono.empty();
   }
 
