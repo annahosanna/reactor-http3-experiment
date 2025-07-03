@@ -43,7 +43,7 @@ public class ServeHttp2 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .subscribe(cdm -> {
+      .flatMap(cdm -> {
         // Set each response field
         response.status(cdm.getResponseStatusCode());
         if (cdm.getResponseContentType() != null) {
@@ -53,7 +53,12 @@ public class ServeHttp2 {
           response.addCookie(cdm.getResponseCookie());
         }
         returnMessage.setWrappedString(cdm.getResponseMessage());
-      });
+        System.out.println(
+          "Response message: " + returnMessage.getWrappedString()
+        );
+        return Mono.just(cdm);
+      })
+      .subscribe();
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println(request.method().name() + " HTTP/2");
 
@@ -76,7 +81,7 @@ public class ServeHttp2 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .subscribe(cdm -> {
+      .flatMap(cdm -> {
         // Set each response field
         response.status(cdm.getResponseStatusCode());
         if (cdm.getResponseContentType() != null) {
@@ -86,7 +91,12 @@ public class ServeHttp2 {
           response.addCookie(cdm.getResponseCookie());
         }
         returnMessage.setWrappedString(cdm.getResponseMessage());
-      });
+        System.out.println(
+          "Response message: " + returnMessage.getWrappedString()
+        );
+        return Mono.just(cdm);
+      })
+      .subscribe();
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println(request.method().name() + " HTTP/2");
 
@@ -109,7 +119,7 @@ public class ServeHttp2 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .subscribe(cdm -> {
+      .flatMap(cdm -> {
         // Set each response field
         response.status(cdm.getResponseStatusCode());
         if (cdm.getResponseContentType() != null) {
@@ -119,7 +129,12 @@ public class ServeHttp2 {
           response.addCookie(cdm.getResponseCookie());
         }
         returnMessage.setWrappedString(cdm.getResponseMessage());
-      });
+        System.out.println(
+          "Response message: " + returnMessage.getWrappedString()
+        );
+        return Mono.just(cdm);
+      })
+      .subscribe();
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println(request.method().name() + " HTTP/2");
 

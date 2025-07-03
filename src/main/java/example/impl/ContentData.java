@@ -324,7 +324,9 @@ public class ContentData {
 
   public Mono<ContentData> processGetHtmlData() {
     // ----------------- GET text/html  --------------------
-    this.responseMessage = ServeCommon.htmlResponse();
+    // this.responseMessage = ServeCommon.htmlResponse();
+    this.responseMessage =
+      "<html><head></head><body>regular html</body></html>";
     this.responseStatusCode = 200;
     this.responseContentType = "text/html";
 
