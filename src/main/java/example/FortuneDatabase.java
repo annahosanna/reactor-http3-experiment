@@ -56,6 +56,7 @@ public class FortuneDatabase {
   }
 
   public static void addFortune(String fortune) {
+    // jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
     String dbUrl =
       "jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
     String trimmedFortune = new String(truncateString(fortune, 254));
@@ -85,7 +86,7 @@ public class FortuneDatabase {
           conn
             .createStatement()
             .execute(
-              "CREATE TABLE IF NOT EXISTS DATA (ID IDENTITY, SESSIONID VARCHAR(255), KEY VARCHAR(255),VALUE VARCHAR(255), TIME BIGINT DEFAULT DATEDIFF('MILLISECOND', TIMESTAMP '1970-01-01 00:00:00', CURRENT_TIMESTAMP AT TIME ZONE 'UTC')"
+              "CREATE TABLE IF NOT EXISTS DATA (ID BIGINT PRIMARY KEY AUTO_INCREMENT, SESSIONID VARCHAR(255), JSONKEY VARCHAR(255), JSONVALUE VARCHAR(255), TIME BIGINT DEFAULT (DATEDIFF('MILLISECOND', TIMESTAMP '1970-01-01 00:00:00', CURRENT_TIMESTAMP())));"
             );
         } catch (Exception e) {
           e.printStackTrace();
