@@ -51,7 +51,7 @@ public class ContentData {
   // A Hash Map of headers (loses data to duplicates) - which headers do I care about
   private HttpHeaders headers = null;
   // Some default values
-  private int responseStatusCode = 401;
+  private int responseStatusCode = 200;
   private String responseMessage = null;
   private String responseContentType = null;
   // Cookie are by path not port
@@ -117,8 +117,9 @@ public class ContentData {
       (this.getResponseAuthorizationHeader().equals(
           this.headers.get(HttpHeaderNames.AUTHORIZATION)
         )));
-    if ((this.validatedMethod == "GETHTML") || (authenitcated == true)) {
+    if ((this.validatedMethod.equals("GETHTML")) || (authenitcated == true)) {
       // Yay authenticated
+      this.responseStatusCode = 200;
       return Mono.just(this);
     }
     this.responseStatusCode = 401;
@@ -139,14 +140,14 @@ public class ContentData {
     > entry : this.cookieMapList.entrySet()) {
       List<Cookie> cookieList = entry.getValue();
       for (Cookie cookie : cookieList) {
-        if (cookie.name() == "SESSIONID") {
+        if (cookie.name().equals("SESSIONID")) {
           if (!cookie.value().isBlank()) {
             sessionid = cookie.value();
           }
         }
       }
     }
-    if ((sessionid == null) && (this.validatedMethod == "GETHTML")) {
+    if ((sessionid == null) && (this.validatedMethod.equals("GETHTML"))) {
       this.responseCookie = ServeCommon.generateSessionId();
       sessionid = this.responseCookie.value();
     } else if (sessionid == null) {
@@ -232,21 +233,24 @@ public class ContentData {
       System.out.println("AcceptEncoding NONE");
       acceptEncoding = "NONE";
     }
-    if ((contentType == "JSON") && (this.method == "PUT")) {
+
+    if ((contentType.equals("JSON")) && (this.method.equals("PUT"))) {
       System.out.println("validatedMethod = PUT");
       this.validatedMethod = "PUT";
-    } else if ((contentType == "URLENCODED") && (this.method == "POST")) {
+    } else if (
+      (contentType.equals("URLENCODED")) && (this.method.equals("POST"))
+    ) {
       System.out.println("validatedMethod = POST");
       this.validatedMethod = "POST";
     } else if (
-      ((contentType == "HTML") || (acceptEncoding == "HTML")) &&
-      (this.method == "GET")
+      ((contentType.equals("HTML")) || (acceptEncoding.equals("HTML"))) &&
+      (this.method.equals("GET"))
     ) {
       System.out.println("validatedMethod = GETHTML");
       this.validatedMethod = "GETHTML";
     } else if (
-      ((contentType == "JSON") || (acceptEncoding == "JSON")) &&
-      (this.method == "GET")
+      ((contentType.equals("JSON")) || (acceptEncoding.equals("JSON"))) &&
+      (this.method.equals("GET"))
     ) {
       System.out.println("validatedMethod = GETJSON");
       this.validatedMethod = "GETJSON";
@@ -255,12 +259,13 @@ public class ContentData {
       this.responseStatusCode = 415;
       this.responseMessage = "";
       System.out.println(
-        "Unsupported Media Type:" +
+        "Unsupported Media Type: Accept:\"" +
         acceptEncoding +
-        " " +
-        contentTypeTemp +
-        " " +
-        this.method
+        "\" ContentType:\"" +
+        contentType +
+        "\" Method:\"" +
+        this.method +
+        "\""
       );
       return Mono.empty();
     }
@@ -293,6 +298,8 @@ public class ContentData {
     });
 
     Mono<String> waiter = aFluxString.last("");
+    this.responseStatusCode = 204;
+    this.responseMessage = "";
 
     return Mono.just(this);
   }
@@ -309,12 +316,18 @@ public class ContentData {
       this.sessionid,
       fluxPutString
     );
+    this.responseStatusCode = 204;
+    this.responseMessage = "";
+
     return Mono.just(this);
   }
 
   public Mono<ContentData> processGetHtmlData() {
     // ----------------- GET text/html  --------------------
     this.responseMessage = ServeCommon.htmlResponse();
+    this.responseStatusCode = 200;
+    this.responseContentType = "text/html";
+
     return Mono.just(this);
   }
 
@@ -349,16 +362,17 @@ public class ContentData {
     // otherwise return normally.
     // This return type should be the string (html)
     // sent to the client
-    if (this.validatedMethod == "POST") {
+    if (this.validatedMethod.equals("POST")) {
       return this.processPostData();
-    } else if (this.validatedMethod == "PUT") {
+    } else if (this.validatedMethod.equals("PUT")) {
       return this.processPutData();
-    } else if (this.validatedMethod == "GETHTML") {
+    } else if (this.validatedMethod.equals("GETHTML")) {
       return this.processGetHtmlData();
-    } else if (this.validatedMethod == "GETJSON") {
+    } else if (this.validatedMethod.equals("GETJSON")) {
       return this.processGetJSONData();
     }
     System.out.println("Unsupported Method");
+    this.responseStatusCode = 415;
     return Mono.empty();
   }
 
