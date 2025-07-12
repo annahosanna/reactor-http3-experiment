@@ -72,15 +72,20 @@
     <pre id="output">Waiting for input...</pre>
 
     <script>
-      // Start a new session/SESSIONID on GET
-      // Associate PUT with SESSIONID (how to determnie table?)
-      // This should be the endpoint to get the fortune from
-      const url = "https://jsonplaceholder.typicode.com/posts/1"; // Example GET endpoint
+      // Insert hostname here dynamically
+      const url = "https://jsonplaceholder.typicode.com/fortune"; // Example GET endpoint
 
+      // Dynamically populate this
       const token = "Bearer Token";
       performance.mark("start-fetch");
 
-      fetch(url)
+      fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+      })
         .then((response) => response.json())
         .then((data) => {
           performance.mark("end-fetch");
@@ -103,10 +108,11 @@
           };
 
           // Send JSON to server
-          fetch("/report-latency", {
+          fetch("/fortunes", {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
+              Authorization: token,
             },
             body: JSON.stringify(latencyData),
           }).catch((err) => {
@@ -118,14 +124,41 @@
             `Error during fetch: ${error}`;
         });
       // Client side geo-location
+      // "ip": "2600:4040:2d24:2300:c073:b65a:bd7d:ed46",
+      // "network": "2600:4040:2d20::/44",
+      // "version": "IPv6",
+      // "city": "Silver Spring",
+      // "region": "Maryland",
+      // "region_code": "MD",
+      // "country": "US",
+      // "country_name": "United States",
+      // "country_code": "US",
+      // "country_code_iso3": "USA",
+      // "country_capital": "Washington",
+      // "country_tld": ".us",
+      // "continent_code": "NA",
+      // "in_eu": false,
+      // "postal": "20910",
+      // "latitude": 38.9994,
+      // "longitude": -77.0336,
+      // "timezone": "America/New_York",
+      // "utc_offset": "-0400",
+      // "country_calling_code": "+1",
+      // "currency": "USD",
+      // "currency_name": "Dollar",
+      // "languages": "en-US,es-US,haw,fr",
+      // "country_area": 9629091.0,
+      // "country_population": 327167434,
+      // "asn": "AS701",
+      // "org": "UUNET"
       fetch("https://ipapi.co/json/")
         .then((res) => res.json())
         .then((data) => {
           console.log("IP-based location:", data);
 
-          // Optionally send to your server
+          // Dynamically populate url
           fetch("https://your-server.com/api/location", {
-            method: "POST",
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
           });
@@ -133,6 +166,10 @@
         .catch((err) => {
           console.error("IP location failed:", err);
         });
+
+      function isBlank(str) {
+        return !str || str.trim() === "";
+      }
 
       // Get session ID
       function getCookie(name) {

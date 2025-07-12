@@ -29,10 +29,9 @@ public class FortuneDatabaseR2DBC {
       Class.forName("org.h2.Driver");
       try {
         this.conn = DriverManager.getConnection(dbUrl, "sa", "");
-        this.conn.createStatement()
-          .execute(
-            "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, text VARCHAR(255))"
-          );
+        this.conn.createStatement().execute(
+          "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, key VARCHAR(255) DEFAULT '', text VARCHAR(255) DEFAULT '')"
+        );
       } catch (Exception e) {
         System.out.println("Error connecting to database");
         e.printStackTrace();
@@ -42,8 +41,6 @@ public class FortuneDatabaseR2DBC {
       e.printStackTrace();
     }
 
-    // Add test here to see that db is not gone
-
     try {
       this.server = Server.createTcpServer(
         "-tcp",
@@ -52,13 +49,10 @@ public class FortuneDatabaseR2DBC {
         "9092"
       );
       this.server.start();
-      // System.out.println(this.server.getURL());
     } catch (Exception e) {
       System.out.println("Error starting server");
       e.printStackTrace();
     }
-
-    // System.out.println(FortuneDatabase.getFortune());
 
     initializeDatabase();
   }
@@ -78,16 +72,8 @@ public class FortuneDatabaseR2DBC {
       "The future belongs to those who believe in the beauty of their dreams",
       "Life is what happens while you are busy making other plans",
     };
-    // Control multiple access by using tcp
-    // Database URL: jdbc:h2:tcp://localhost/mem:fortunes
-    // jdbc:h2:mem:fortunes;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    // .doOnError(e -> log.error("Failed to save fortune", e))
-    //     .onErrorResume(e -> Mono.empty())
-    // Seems like h2 is being closed for some reason
-    // ;INIT=CREATE SCHEMA IF NOT EXISTS test_schema
 
     for (int i = 0; i < initialFortunes.length; i++) {
-      // System.out.println("Adding initial fortune: " + initialFortunes[i]);
       FortuneDatabase.addFortune(initialFortunes[i]);
     }
   }
@@ -107,22 +93,21 @@ public class FortuneDatabaseR2DBC {
       Flux<String> fortunesFlux = Mono.from(
         connectionFactory.create()
       ).flatMapMany(connection ->
-        connection
-          .createStatement(
-            "SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1"
-          )
-          .execute()
-          // H2Result
-          .flatMap(result -> {
-            // System.out.println("Processing getFortune result");
-            return (
-              result.map((row, rowMetadata) -> {
-                return (row.get("text", String.class));
-              })
-            );
-          })
-          .doFinally(signalType -> connection.close())
-      );
+          connection
+            .createStatement(
+              "SELECT text FROM fortunes ORDER BY RANDOM() LIMIT 1"
+            )
+            .execute()
+            // H2Result
+            .flatMap(result -> {
+              return (
+                result.map((row, rowMetadata) -> {
+                  return (row.get("text", String.class));
+                })
+              );
+            })
+            .doFinally(signalType -> connection.close())
+        );
 
       Mono<List<String>> fortunesMono = fortunesFlux.collectList();
       fortuneMono = fortunesMono.flatMap(
@@ -143,48 +128,20 @@ public class FortuneDatabaseR2DBC {
     return Mono.just("");
   }
 
-  // public static void addData(String sessionid, Map<String, String> fortune) {
-  //   // System.out.println("Adding fortune - via map");
-
-  //   for (Map.Entry<String, String> entry : fortune.entrySet()) {
-  //     addData(sessionid, entry.getKey(), entry.getValue());
-  //   }
-  // }
-
   public static void addFortuneData(
     String sessionid,
     Map<String, String> fortune
   ) {
-    // System.out.println("Adding fortune - via map");
-
     for (Map.Entry<String, String> entry : fortune.entrySet()) {
       addFortuneData(sessionid, entry.getKey(), entry.getValue());
     }
   }
 
-  public static void addDataData(
-    String sessionid,
-    Map<String, String> fortune
-  ) {
-    // System.out.println("Adding fortune - via map");
-
-    for (Map.Entry<String, String> entry : fortune.entrySet()) {
+  public static void addDataData(String sessionid, Map<String, String> data) {
+    for (Map.Entry<String, String> entry : data.entrySet()) {
       addDataData(sessionid, entry.getKey(), entry.getValue());
     }
   }
-
-  // This automatically adds ID and TIME on every insert
-  // Time is from EPOCH UTC (not local timezone)
-  // CREATE TABLE IF NOT EXISTS DATA (
-  //     ID IDENTITY,
-  //     SESSIONID VARCHAR(255),
-  //     KEY VARCHAR(255),
-  //     VALUE VARCHAR(255),
-  //     TIME BIGINT DEFAULT DATEDIFF(
-  //        'MILLISECOND',
-  //        TIMESTAMP '1970-01-01 00:00:00',
-  //        CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-  //   )
 
   public static void addFortuneData(
     String sessionid,
@@ -194,7 +151,7 @@ public class FortuneDatabaseR2DBC {
     // System.out.println("Adding fortune - via string: " + fortune);
     H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
       io.r2dbc.h2.H2ConnectionConfiguration.builder()
-        .url("tcp://localhost:9092/mem:data")
+        .url("tcp://localhost:9092/mem:fortunes")
         .username("sa")
         .password("")
         .build()
@@ -206,22 +163,17 @@ public class FortuneDatabaseR2DBC {
     try {
       Class.forName("org.h2.Driver");
       Mono<H2Result> insertData = Mono.from(connectionFactory.create()).flatMap(
-        connection ->
-          connection
-            .createStatement(
-              "INSERT INTO  DATA (SESSIONID, KEY, VALUE) VALUES ($1, $2, $3)"
-            )
-            .bind("$1", trimmedSessionId)
-            .bind("$2", trimmedKey)
-            .bind("$3", trimmedValue)
-            .execute()
-            .next()
-            .doFinally(signalType -> connection.close())
-      );
+          connection ->
+            connection
+              .createStatement("INSERT INTO fortunes (text) VALUES ($1)")
+              .bind("$1", trimmedValue)
+              .execute()
+              .next()
+              .doFinally(signalType -> connection.close())
+        );
       Disposable disposable = insertData
         .subscribeOn(Schedulers.boundedElastic())
         .subscribe();
-      // return insertFortune;
     } catch (Exception e) {
       System.out.println("Error in addFortune");
       e.printStackTrace();
@@ -233,7 +185,7 @@ public class FortuneDatabaseR2DBC {
     // System.out.println("Adding fortune - via string: " + fortune);
     H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
       io.r2dbc.h2.H2ConnectionConfiguration.builder()
-        .url("tcp://localhost:9092/mem:data")
+        .url("tcp://localhost:9092/mem:fortunes")
         .username("sa")
         .password("")
         .build()
@@ -245,18 +197,18 @@ public class FortuneDatabaseR2DBC {
     try {
       Class.forName("org.h2.Driver");
       Mono<H2Result> insertData = Mono.from(connectionFactory.create()).flatMap(
-        connection ->
-          connection
-            .createStatement(
-              "INSERT INTO  DATA (SESSIONID, KEY, VALUE) VALUES ($1, $2, $3)"
-            )
-            .bind("$1", trimmedSessionId)
-            .bind("$2", trimmedKey)
-            .bind("$3", trimmedValue)
-            .execute()
-            .next()
-            .doFinally(signalType -> connection.close())
-      );
+          connection ->
+            connection
+              .createStatement(
+                "INSERT INTO  data (sessionid, jsonkey, jsonvalue) VALUES ($1, $2, $3)"
+              )
+              .bind("$1", trimmedSessionId)
+              .bind("$2", trimmedKey)
+              .bind("$3", trimmedValue)
+              .execute()
+              .next()
+              .doFinally(signalType -> connection.close())
+        );
       Disposable disposable = insertData
         .subscribeOn(Schedulers.boundedElastic())
         .subscribe();
@@ -284,13 +236,13 @@ public class FortuneDatabaseR2DBC {
       Mono<H2Result> insertFortune = Mono.from(
         connectionFactory.create()
       ).flatMap(connection ->
-        connection
-          .createStatement("INSERT INTO fortunes (text) VALUES ($1)")
-          .bind("$1", trimmedFortune)
-          .execute()
-          .next()
-          .doFinally(signalType -> connection.close())
-      );
+          connection
+            .createStatement("INSERT INTO fortunes (text) VALUES ($1)")
+            .bind("$1", trimmedFortune)
+            .execute()
+            .next()
+            .doFinally(signalType -> connection.close())
+        );
       Disposable disposable = insertFortune
         .subscribeOn(Schedulers.boundedElastic())
         .subscribe();
@@ -310,6 +262,72 @@ public class FortuneDatabaseR2DBC {
       return text;
     } else {
       return text.substring(0, maxLength);
+    }
+  }
+
+  public static void createDataTable() {
+    // System.out.println("Adding fortune - via string: " + fortune);
+    H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
+      io.r2dbc.h2.H2ConnectionConfiguration.builder()
+        .url("tcp://localhost:9092/mem:fortunes")
+        .username("sa")
+        .password("")
+        .build()
+    );
+
+    try {
+      Class.forName("org.h2.Driver");
+      Mono<H2Result> insertData = Mono.from(connectionFactory.create()).flatMap(
+          connection ->
+            connection
+              .createStatement(
+                "CREATE TABLE IF NOT EXISTS data (id BIGINT PRIMARY KEY AUTO_INCREMENT, sessionid VARCHAR(255), jsonkey VARCHAR(255), jsonvalue VARCHAR(255), time BIGINT DEFAULT (DATEDIFF('MILLISECOND', TIMESTAMP '1970-01-01 00:00:00', CURRENT_TIMESTAMP())));"
+              )
+              .execute()
+              .next()
+              .doFinally(signalType -> connection.close())
+        );
+      Disposable disposable = insertData
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
+      // return insertFortune;
+    } catch (Exception e) {
+      System.out.println("Error in addFortune");
+      e.printStackTrace();
+      // fortune = "";
+    }
+  }
+
+  public static void createFortuneTable() {
+    // System.out.println("Adding fortune - via string: " + fortune);
+    H2ConnectionFactory connectionFactory = new H2ConnectionFactory(
+      io.r2dbc.h2.H2ConnectionConfiguration.builder()
+        .url("tcp://localhost:9092/mem:fortunes")
+        .username("sa")
+        .password("")
+        .build()
+    );
+
+    try {
+      Class.forName("org.h2.Driver");
+      Mono<H2Result> insertData = Mono.from(connectionFactory.create()).flatMap(
+          connection ->
+            connection
+              .createStatement(
+                "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, key VARCHAR(255) DEFAULT '', text VARCHAR(255) DEFAULT '')"
+              )
+              .execute()
+              .next()
+              .doFinally(signalType -> connection.close())
+        );
+      Disposable disposable = insertData
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
+      // return insertFortune;
+    } catch (Exception e) {
+      System.out.println("Error in addFortune");
+      e.printStackTrace();
+      // fortune = "";
     }
   }
 }

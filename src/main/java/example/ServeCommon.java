@@ -10,6 +10,9 @@ import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.FileUpload;
 import io.netty.handler.codec.http.multipart.HttpData;
+import java.lang.Boolean;
+import java.lang.Double;
+import java.lang.Long;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -147,6 +150,7 @@ public class ServeCommon {
    * @param monoMap
    * @return
    */
+  // This also needs to check other datatypes besides string
   public static <K, V> Mono<String> convertMonoMapToMonoStringGeneric(
     Mono<Map<K, V>> monoMap
   ) {
@@ -155,25 +159,19 @@ public class ServeCommon {
         .entrySet()
         .stream()
         .map(entry -> {
+          // Check if key is not null and is a String
           if (
-            ((Objects.isNull(entry.getKey())) ||
-              (entry.getKey() instanceof String)) &&
-            ((Objects.isNull(entry.getValue())) ||
-              (entry.getValue() instanceof String))
+            (!Objects.isNull(entry.getKey())) &&
+            (entry.getKey() instanceof String)
           ) {
             ObjectMapper mapper = new ObjectMapper();
             String key = null;
             String value = null;
+            // This could be
             try {
-              if (Objects.isNull(entry.getKey())) {
-                key = new String(mapper.writeValueAsString(null));
-              } else {
-                key = new String(
-                  mapper.writeValueAsString((String) (entry.getKey()))
-                );
-              }
+              key = new String(mapper.writeValueAsString(entry.getKey()));
               if (Objects.isNull(entry.getValue())) {
-                value = new String(mapper.writeValueAsString(null));
+                value = new String(mapper.writeValueAsString("null"));
               } else {
                 value = new String(
                   mapper.writeValueAsString((String) (entry.getValue()))
@@ -189,7 +187,7 @@ public class ServeCommon {
           } else {
             // This is a map rather than hashmap
             // This means it is the wrong type of object
-            return ("{\"Key\":null,\"Value\":null}");
+            return ("{\"Key\":\"null\",\"Value\":\"null\"}");
           }
         })
         .collect(Collectors.joining(",", "[", "]"))
@@ -476,27 +474,44 @@ public class ServeCommon {
    * @param result
    * @return
    */
-  public static Mono<String> doConvertJSONToValue(String result) {
-    String key = new String();
-    String value = new String();
-    if (result.length() > 8) {
+  // This is incorrect because types may be mixed
+  // Need to make sure that all of the values of the map are interated over
+  public static Flux<Map<String, Object>> doConvertJSONToValue(String result) {
+    String checkedResult = null;
+    if (!(result.matches("^[\\[]") && result.matches("[\\]]$"))) {
+      checkedResult = "[" + result + "]";
+    } else {
+      checkedResult = result;
+    }
+    if (checkedResult.length() > 8) {
       try {
-        List<Map<String, String>> pojo = new ObjectMapper().readValue(
-          result,
-          new TypeReference<List<Map<String, String>>>() {}
+        List<Map<String, Object>> pojo = new ObjectMapper().readValue(
+          checkedResult,
+          new TypeReference<List<Map<String, Object>>>() {}
         );
-        System.out.println("JSON value: " + result);
+        System.out.println("JSON value: " + checkedResult);
         // Just read one object
-        Map<String, String> map = pojo.iterator().next();
-        key = map.get("Key");
-        value = map.get("Value");
-        return (Mono.just(result));
+        // This is totally wrong - Should this return a flux
+
+        return Flux.fromIterable(pojo);
+
+        // key = map.get("Key");
+        // value = map.get("Value");
+        // return (Mono.just(result));
       } catch (Exception e) {
-        e.printStackTrace();
+        try {
+          Map<String, Object> pojo = new ObjectMapper().readValue(
+            result,
+            new TypeReference<Map<String, Object>>() {}
+          );
+          return Flux.just(pojo);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       }
     }
     System.out.println("Invalid JSON input");
-    return (Mono.empty());
+    return (Flux.empty());
   }
 
   /**
@@ -685,16 +700,22 @@ public class ServeCommon {
     System.out.println("doConvertJSONArrayToValues - String -> Flux<String>");
 
     System.out.println(result);
+    String checkedResult = null;
+    if (!(result.matches("^[\\[]") && result.matches("[\\]]$"))) {
+      checkedResult = "[" + result + "]";
+    } else {
+      checkedResult = result;
+    }
     // Do not waste time parsing the impossible
     // [{"":""}]
-    if (result.length() > 8) {
+    if (checkedResult.length() > 8) {
       try {
         // First test the string by trying to convert it as json to an object
         // Then convert the List of Maps to only map values
         // [{ "Key": "K1", "Value": "V1" },{ "Key": "K2", "Value": "V2" }]
         // Interate over the List and check the Key name, and then the Value
         List<Map<String, String>> returnValue = new ObjectMapper().readValue(
-          result,
+          checkedResult,
           new TypeReference<List<Map<String, String>>>() {}
         );
 

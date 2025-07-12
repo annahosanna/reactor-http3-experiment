@@ -3,6 +3,7 @@ package example.impl;
 import example.FortuneDatabaseR2DBC;
 import example.ServeCommon;
 import example.impl.BooleanObject;
+import example.impl.WrappedString;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.server.HttpServerRequest;
+import reactor.netty.http.server.HttpServerResponse;
 
 // Little issue here - what if someone connects on port 443/tcp and then on 443/udp - do they share the same session cookie
 
@@ -512,5 +514,25 @@ public class ContentData {
     if (this.hasSetResponseAuthorizationHeader.flipToTrue()) {
       this.responseAuthorizationHeader = responseAuthorizationHeader;
     }
+  }
+
+  public Mono<ContentData> setResponse(
+    HttpServerResponse response,
+    WrappedString returnMessage
+  ) {
+    response.status(this.getResponseStatusCode());
+    if (this.getResponseContentType() != null) {
+      response.header("content-type", this.getResponseContentType());
+    }
+    if (this.getResponseCookie() != null) {
+      response.addCookie(this.getResponseCookie());
+    }
+    if (returnMesssage != null) {
+      returnMessage.setWrappedString(this.getResponseMessage());
+      System.out.println(
+        "Response message: " + returnMessage.getWrappedString()
+      );
+    }
+    return Mono.just(this);
   }
 }

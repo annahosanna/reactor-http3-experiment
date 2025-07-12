@@ -42,21 +42,7 @@ public class ServeHttp3 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .flatMap(cdm -> {
-        // Set each response field
-        response.status(cdm.getResponseStatusCode());
-        if (cdm.getResponseContentType() != null) {
-          response.header("content-type", cdm.getResponseContentType());
-        }
-        if (cdm.getResponseCookie() != null) {
-          response.addCookie(cdm.getResponseCookie());
-        }
-        returnMessage.setWrappedString(cdm.getResponseMessage());
-        System.out.println(
-          "Response message: " + returnMessage.getWrappedString()
-        );
-        return Mono.just(cdm);
-      })
+      .flatMap(cdm -> cdm.setResponse(response, returnMessage))
       .subscribe();
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println(request.method().name() + " HTTP/3");
@@ -80,21 +66,7 @@ public class ServeHttp3 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .flatMap(cdm -> {
-        // Set each response field
-        response.status(cdm.getResponseStatusCode());
-        if (cdm.getResponseContentType() != null) {
-          response.header("content-type", cdm.getResponseContentType());
-        }
-        if (cdm.getResponseCookie() != null) {
-          response.addCookie(cdm.getResponseCookie());
-        }
-        returnMessage.setWrappedString(cdm.getResponseMessage());
-        System.out.println(
-          "Response message: " + returnMessage.getWrappedString()
-        );
-        return Mono.just(cdm);
-      })
+      .flatMap(cdm -> cdm.setResponse(response, returnMessage))
       .subscribe();
 
     System.out.println("Client connected to " + request.hostName().toString());
@@ -124,21 +96,7 @@ public class ServeHttp3 {
       .flatMap(cdm -> cdm.checkAuthentication())
       .flatMap(cdm -> cdm.checkSESSIONID())
       .flatMap(cdm -> cdm.processData())
-      .flatMap(cdm -> {
-        // Set each response field
-        response.status(cdm.getResponseStatusCode());
-        if (cdm.getResponseContentType() != null) {
-          response.header("content-type", cdm.getResponseContentType());
-        }
-        if (cdm.getResponseCookie() != null) {
-          response.addCookie(cdm.getResponseCookie());
-        }
-        returnMessage.setWrappedString(cdm.getResponseMessage());
-        System.out.println(
-          "Response message: " + returnMessage.getWrappedString()
-        );
-        return Mono.just(cdm);
-      })
+      .flatMap(cdm -> cdm.setResponse(response, returnMessage))
       .subscribe();
     System.out.println("Client connected to " + request.hostName().toString());
     System.out.println(request.method().name() + " HTTP/3");

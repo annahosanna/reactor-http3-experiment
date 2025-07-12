@@ -1,5 +1,7 @@
 package example.impl;
 
+import example.impl.BooleanObject;
+
 public class WrappedString {
 
   private String wrappedString = null;

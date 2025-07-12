@@ -67,7 +67,7 @@ public class FortuneDatabase {
         conn
           .createStatement()
           .execute(
-            "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, text VARCHAR(255))"
+            "CREATE TABLE IF NOT EXISTS fortunes (id INT PRIMARY KEY AUTO_INCREMENT, key VARCHAR(255) DEFAULT '', text VARCHAR(255) DEFAULT '')"
           );
         String sql = "INSERT INTO fortunes (text) VALUES (?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -86,7 +86,7 @@ public class FortuneDatabase {
           conn
             .createStatement()
             .execute(
-              "CREATE TABLE IF NOT EXISTS DATA (ID BIGINT PRIMARY KEY AUTO_INCREMENT, SESSIONID VARCHAR(255), JSONKEY VARCHAR(255), JSONVALUE VARCHAR(255), TIME BIGINT DEFAULT (DATEDIFF('MILLISECOND', TIMESTAMP '1970-01-01 00:00:00', CURRENT_TIMESTAMP())));"
+              "CREATE TABLE IF NOT EXISTS data (id BIGINT PRIMARY KEY AUTO_INCREMENT, sessionid VARCHAR(255), jsonkey VARCHAR(255), jsonvalue VARCHAR(255), time BIGINT DEFAULT (DATEDIFF('MILLISECOND', TIMESTAMP '1970-01-01 00:00:00', CURRENT_TIMESTAMP())));"
             );
         } catch (Exception e) {
           e.printStackTrace();
